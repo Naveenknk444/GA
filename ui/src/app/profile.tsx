@@ -3,96 +3,160 @@ import { useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { fetchProfile, updateCleanDate, updateHandle, updatePersonalInfo } from '@/api/profile';
+import { DatePickerInput } from '@/components/date-picker-input';
 import { DesertBackdrop } from '@/components/desert-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 import { supabase } from '@/lib/supabase';
 
+function daysClean(dateStr: string | null): number | null {
+  if (!dateStr) return null;
+  const diff = Date.now() - new Date(dateStr).getTime();
+  return Math.max(0, Math.floor(diff / 86400000));
+}
+
+function formatDateDisplay(dateStr: string | null): string {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+// ── row used inside cards ────────────────────────────────────────
+function InfoRow({
+  label, value, editing, placeholder, onChangeText, multiline,
+}: {
+  label: string; value: string; editing: boolean;
+  placeholder: string; onChangeText: (v: string) => void; multiline?: boolean;
+}) {
+  return (
+    <View style={row.wrap}>
+      <Text style={row.label}>{label}</Text>
+      {editing ? (
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={AppColors.textMuted}
+          style={[row.input, multiline && { minHeight: 80, textAlignVertical: 'top', paddingTop: 10 }]}
+          autoCorrect={false}
+          multiline={multiline}
+        />
+      ) : (
+        <Text style={row.value}>{value || '—'}</Text>
+      )}
+    </View>
+  );
+}
+
+const row = StyleSheet.create({
+  wrap: { width: '100%', gap: 6 },
+  label: { color: AppColors.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
+  value: { color: AppColors.text, fontSize: 15 },
+  input: {
+    width: '100%',
+    backgroundColor: AppColors.screen,
+    borderWidth: 1, borderColor: AppColors.hairline,
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+    color: AppColors.text, fontSize: 15,
+    outlineStyle: 'none' as any,
+  },
+});
+
+// ── main screen ──────────────────────────────────────────────────
 export default function ProfileScreen() {
   const { user, shortId, loading } = useAuth();
 
-  // Member ID (custom handle the user can change)
+  // member handle
   const [handle, setHandle] = useState('');
   const [savedHandle, setSavedHandle] = useState('');
   const [savingHandle, setSavingHandle] = useState(false);
   const [editingHandle, setEditingHandle] = useState(false);
 
-  // Recovery phrase (treated as a password)
-  const [phrase, setPhrase] = useState('');
-  const [savedPhrase, setSavedPhrase] = useState<string | null>(null);
-  const [savingPhrase, setSavingPhrase] = useState(false);
-  const [showPhrase, setShowPhrase] = useState(false);
+  // recovery date inline edit
+  const [editingDate, setEditingDate] = useState(false);
+  const [savingDate, setSavingDate] = useState(false);
+
+  async function saveCleanDate() {
+    if (!user) return;
+    setSavingDate(true);
+    try {
+      await updateCleanDate(user.id, cleanDate);
+      setSavedInfo(s => ({ ...s, cleanDate: cleanDate.trim() }));
+      setEditingDate(false);
+    } finally {
+      setSavingDate(false);
+    }
+  }
+
+  // personal info
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [city, setCity] = useState('');
+  const [bio, setBio] = useState('');
+  const [cleanDate, setCleanDate] = useState('');   // YYYY-MM-DD
+  const [savedInfo, setSavedInfo] = useState({
+    firstName: '', lastName: '', city: '', bio: '', cleanDate: '',
+  });
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('profiles')
-      .select('handle, recovery_phrase')
-      .eq('id', user.id)
-      .single()
-      .then(({ data }) => {
-        const h = data?.handle ?? ('Member ' + shortId);
-        setHandle(h);
-        setSavedHandle(h);
-        if (data?.recovery_phrase) {
-          setSavedPhrase(data.recovery_phrase);
-          setPhrase(data.recovery_phrase);
-        }
-      });
+    fetchProfile(user.id).then((data) => {
+      const h = data?.handle ?? ('Member ' + shortId);
+      setHandle(h); setSavedHandle(h);
+      const info = {
+        firstName: data?.first_name ?? '',
+        lastName:  data?.last_name  ?? '',
+        city:      data?.city       ?? '',
+        bio:       data?.bio        ?? '',
+        cleanDate: data?.clean_date ?? '',
+      };
+      setFirstName(info.firstName); setLastName(info.lastName);
+      setCity(info.city); setBio(info.bio); setCleanDate(info.cleanDate);
+      setSavedInfo(info);
+    });
   }, [user]);
 
   async function saveHandle() {
     if (!user || !handle.trim()) return;
     setSavingHandle(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ handle: handle.trim() })
-      .eq('id', user.id);
-    setSavingHandle(false);
-    if (error) {
-      Alert.alert('Error', 'Could not update Member ID.');
-    } else {
+    try {
+      await updateHandle(user.id, handle.trim());
       setSavedHandle(handle.trim());
       setEditingHandle(false);
+    } catch {
+      Alert.alert('Error', 'Could not update Member ID.');
+    } finally {
+      setSavingHandle(false);
     }
   }
 
-  async function savePhrase() {
-    if (!user || !phrase.trim() || !shortId) return;
-    setSavingPhrase(true);
-
-    // 1. Save the phrase to the profiles table.
-    const { error: dbError } = await supabase
-      .from('profiles')
-      .update({ recovery_phrase: phrase.trim() })
-      .eq('id', user.id);
-
-    // 2. Link real credentials to this anonymous account so recovery works on new devices.
-    //    We use shortId@recovery.ga as a pseudo-email — no real email is ever sent.
-    const { error: authError } = await supabase.auth.updateUser({
-      email: `${shortId}@recovery.ga`,
-      password: phrase.trim(),
-    });
-
-    setSavingPhrase(false);
-    if (dbError || authError) {
-      Alert.alert('Error', authError?.message ?? 'Could not save recovery password.');
-    } else {
-      setSavedPhrase(phrase.trim());
+  async function saveInfo() {
+    if (!user) return;
+    setSavingInfo(true);
+    try {
+      await updatePersonalInfo(user.id, { firstName, lastName, city, bio });
+      setSavedInfo(s => ({ ...s, firstName: firstName.trim(), lastName: lastName.trim(), city: city.trim(), bio: bio.trim() }));
+      setEditingInfo(false);
+    } finally {
+      setSavingInfo(false);
     }
+  }
+
+  function cancelInfo() {
+    setFirstName(savedInfo.firstName); setLastName(savedInfo.lastName);
+    setCity(savedInfo.city); setBio(savedInfo.bio); setCleanDate(savedInfo.cleanDate);
+    setEditingInfo(false);
   }
 
   async function confirmSignOut() {
-    const warning = savedPhrase
-      ? 'You will be signed out. Use your Member ID and recovery password to sign back in.'
-      : 'Warning: no recovery password set. You will not be able to get this account back.';
-
+    const msg = 'You will be signed out of your account.';
     if (Platform.OS === 'web') {
-      const ok = window.confirm(`Sign Out?\n\n${warning}`);
-      if (!ok) return;
-      await supabase.auth.signOut();
+      if (window.confirm(`Sign Out?\n\n${msg}`)) await supabase.auth.signOut();
     } else {
-      Alert.alert('Sign Out', warning, [
+      Alert.alert('Sign Out', msg, [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Sign Out', style: 'destructive', onPress: () => supabase.auth.signOut() },
       ]);
@@ -100,23 +164,20 @@ export default function ProfileScreen() {
   }
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <Text style={{ color: AppColors.textMuted }}>Loading…</Text>
-      </View>
-    );
+    return <View style={styles.center}><Text style={{ color: AppColors.textMuted }}>Loading…</Text></View>;
   }
+
+  const days = daysClean(savedInfo.cleanDate);
 
   return (
     <View style={styles.root}>
       <DesertBackdrop variant="band" height={180} />
-
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <Text style={styles.screenTitle}>Profile</Text>
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-          {/* Member ID card */}
+          {/* ── Member ID ── */}
           <View style={styles.card}>
             <View style={styles.avatar}>
               <Ionicons name="person" size={32} color={AppColors.accent} />
@@ -124,100 +185,111 @@ export default function ProfileScreen() {
             <Text style={styles.memberLabel}>Member ID</Text>
 
             {editingHandle ? (
-              // Edit mode
               <View style={styles.editRow}>
                 <TextInput
-                  value={handle}
-                  onChangeText={setHandle}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoFocus
-                  style={styles.handleInput}
-                  placeholderTextColor={AppColors.textMuted}
+                  value={handle} onChangeText={setHandle}
+                  autoCapitalize="none" autoCorrect={false} autoFocus
+                  style={styles.handleInput} placeholderTextColor={AppColors.textMuted}
                 />
-                <Pressable
-                  onPress={saveHandle}
+                <Pressable onPress={saveHandle}
                   disabled={savingHandle || !handle.trim() || handle.trim() === savedHandle}
                   style={[styles.smallBtn, { backgroundColor: AppColors.accent }]}>
                   <Text style={styles.smallBtnText}>{savingHandle ? '…' : 'Save'}</Text>
                 </Pressable>
-                <Pressable
-                  onPress={() => { setHandle(savedHandle); setEditingHandle(false); }}
-                  style={[styles.smallBtn, { backgroundColor: AppColors.tile }]}>
+                <Pressable onPress={() => { setHandle(savedHandle); setEditingHandle(false); }}
+                  style={[styles.smallBtn, { backgroundColor: AppColors.screen, borderWidth: 1, borderColor: AppColors.hairline }]}>
                   <Text style={[styles.smallBtnText, { color: AppColors.textMuted }]}>Cancel</Text>
                 </Pressable>
               </View>
             ) : (
-              // Display mode
               <Pressable onPress={() => setEditingHandle(true)} style={styles.handleRow}>
                 <Text style={styles.handleText}>{savedHandle || ('Member ' + shortId)}</Text>
-                <Ionicons name="pencil" size={16} color={AppColors.textMuted} />
+                <Ionicons name="pencil" size={15} color={AppColors.textMuted} />
               </Pressable>
             )}
-
-            <Text style={styles.idHint}>Tap the pencil to change your Member ID.</Text>
           </View>
 
-          {/* Recovery phrase — treated as a password */}
+          {/* ── Recovery Date ── */}
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Recovery Password</Text>
-            <Text style={styles.sectionDesc}>
-              Set a password only you know. Enter it here if you reinstall the app to recover your account.
-            </Text>
-
-            <View style={styles.passwordRow}>
-              <TextInput
-                value={phrase}
-                onChangeText={setPhrase}
-                placeholder="Set a recovery password"
-                placeholderTextColor={AppColors.textMuted}
-                style={[styles.input, { flex: 1 }]}
-                autoCapitalize="none"
-                autoCorrect={false}
-                secureTextEntry={!showPhrase}
-              />
-              <Pressable onPress={() => setShowPhrase(v => !v)} style={styles.eyeBtn}>
-                <Ionicons
-                  name={showPhrase ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={AppColors.textMuted}
-                />
-              </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, width: '100%' }}>
+              <View style={[styles.iconBadge, { backgroundColor: AppColors.meetings + '22' }]}>
+                <Ionicons name="calendar" size={24} color={AppColors.meetings} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={styles.memberLabel}>Recovery Date</Text>
+                {!editingDate && (
+                  days !== null ? (
+                    <>
+                      <Text style={styles.daysText}>{days} days clean</Text>
+                      <Text style={styles.dateSubtext}>Since {formatDateDisplay(savedInfo.cleanDate)}</Text>
+                    </>
+                  ) : (
+                    <Text style={styles.dateSubtext}>Tap pencil to set your recovery date</Text>
+                  )
+                )}
+              </View>
+              {!editingDate && (
+                <Pressable onPress={() => setEditingDate(true)} hitSlop={10}>
+                  <Ionicons name="pencil" size={15} color={AppColors.textMuted} />
+                </Pressable>
+              )}
             </View>
 
-            <Pressable
-              onPress={savePhrase}
-              disabled={savingPhrase || !phrase.trim() || phrase.trim() === savedPhrase}
-              style={[styles.saveBtn, (savingPhrase || !phrase.trim() || phrase.trim() === savedPhrase) && styles.saveBtnDisabled]}>
-              <Text style={styles.saveBtnText}>
-                {savingPhrase ? 'Saving…' : savedPhrase ? 'Update Password' : 'Save Password'}
-              </Text>
-            </Pressable>
-
-            {savedPhrase && (
-              <View style={styles.savedBadge}>
-                <Ionicons name="checkmark-circle" size={16} color={AppColors.meetings} />
-                <Text style={styles.savedText}>Recovery password saved</Text>
+            {editingDate && (
+              <View style={{ width: '100%', gap: 10 }}>
+                <Text style={styles.memberLabel}>Enter your recovery date</Text>
+                <DatePickerInput value={cleanDate} onChange={setCleanDate} />
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Pressable onPress={() => { setCleanDate(savedInfo.cleanDate); setEditingDate(false); }}
+                    style={[styles.dateBtn, { backgroundColor: AppColors.screen, borderWidth: 1, borderColor: AppColors.hairline }]}>
+                    <Text style={[styles.dateBtnText, { color: AppColors.textMuted }]}>Cancel</Text>
+                  </Pressable>
+                  <Pressable onPress={saveCleanDate} disabled={savingDate}
+                    style={[styles.dateBtn, { flex: 1, backgroundColor: AppColors.accent }]}>
+                    <Text style={styles.dateBtnText}>{savingDate ? 'Saving…' : 'Save Date'}</Text>
+                  </Pressable>
+                </View>
               </View>
             )}
           </View>
 
-          {/* Sign out */}
+          {/* ── Personal Info ── */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.sectionTitle}>Personal Info</Text>
+              {!editingInfo ? (
+                <Pressable onPress={() => setEditingInfo(true)} style={styles.editBtn}>
+                  <Ionicons name="pencil" size={13} color={AppColors.accent} />
+                  <Text style={styles.editBtnText}>Edit</Text>
+                </Pressable>
+              ) : (
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Pressable onPress={cancelInfo} style={[styles.editBtn, { borderColor: AppColors.hairline }]}>
+                    <Text style={[styles.editBtnText, { color: AppColors.textMuted }]}>Cancel</Text>
+                  </Pressable>
+                  <Pressable onPress={saveInfo} disabled={savingInfo}
+                    style={[styles.editBtn, { backgroundColor: AppColors.accent, borderColor: AppColors.accent }]}>
+                    <Text style={[styles.editBtnText, { color: '#fff' }]}>{savingInfo ? '…' : 'Save'}</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.divider} />
+            <InfoRow label="First Name" value={firstName} editing={editingInfo} placeholder="Enter first name"            onChangeText={setFirstName} />
+            <View style={styles.divider} />
+            <InfoRow label="Last Name"  value={lastName}  editing={editingInfo} placeholder="Enter last name"             onChangeText={setLastName} />
+            <View style={styles.divider} />
+            <InfoRow label="City"       value={city}      editing={editingInfo} placeholder="Enter your city"             onChangeText={setCity} />
+            <View style={styles.divider} />
+            <InfoRow label="About Me"   value={bio}       editing={editingInfo} placeholder="A few words about yourself…" onChangeText={setBio} multiline />
+          </View>
+
+          {/* ── Sign out ── */}
           <Pressable onPress={confirmSignOut} style={styles.signOutBtn}>
             <Ionicons name="log-out-outline" size={18} color="#F2616B" />
             <Text style={styles.signOutText}>Sign Out</Text>
           </Pressable>
-
-          {/* Anonymity note */}
-          <View style={styles.note}>
-            <Ionicons name="shield-checkmark" size={20} color={AppColors.talk} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.noteTitle}>You are anonymous.</Text>
-              <Text style={styles.noteText}>
-                No real name, email, or phone is ever collected.
-              </Text>
-            </View>
-          </View>
 
         </ScrollView>
       </SafeAreaView>
@@ -230,66 +302,55 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: AppColors.screen },
   safe: { flex: 1, paddingHorizontal: 20 },
   screenTitle: { color: AppColors.text, fontSize: 24, fontWeight: '700', paddingTop: 12, marginBottom: 20 },
-  scroll: { gap: 20, paddingBottom: 32 },
+  scroll: { gap: 16, paddingBottom: 36 },
 
   card: {
     backgroundColor: AppColors.tile,
     borderWidth: 1, borderColor: AppColors.tileBorder,
-    borderRadius: 18, padding: 18, gap: 10, alignItems: 'center',
+    borderRadius: 18, padding: 18, gap: 12, alignItems: 'center',
   },
   avatar: {
     width: 68, height: 68, borderRadius: 34,
     backgroundColor: AppColors.accent + '22',
     alignItems: 'center', justifyContent: 'center',
   },
-  memberLabel: { color: AppColors.textMuted, fontSize: 12, letterSpacing: 0.5, textTransform: 'uppercase' },
+  iconBadge: { width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  memberLabel: { color: AppColors.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
 
   handleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   handleText: { color: AppColors.text, fontSize: 22, fontWeight: '700' },
-
   editRow: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%' },
   handleInput: {
-    flex: 1, height: 42,
-    backgroundColor: AppColors.screen,
+    flex: 1, height: 42, backgroundColor: AppColors.screen,
     borderWidth: 1, borderColor: AppColors.accent,
     borderRadius: 10, paddingHorizontal: 12,
-    color: AppColors.text, fontSize: 15,
-    outlineStyle: 'none' as any,
+    color: AppColors.text, fontSize: 15, outlineStyle: 'none' as any,
   },
   smallBtn: { height: 42, paddingHorizontal: 14, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   smallBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  idHint: { color: AppColors.textMuted, fontSize: 12 },
 
-  sectionTitle: { color: AppColors.text, fontSize: 16, fontWeight: '600', alignSelf: 'flex-start' },
-  sectionDesc: { color: AppColors.textMuted, fontSize: 13, lineHeight: 19, alignSelf: 'flex-start' },
-
-  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%' },
-  input: {
-    height: 48, backgroundColor: AppColors.screen,
-    borderWidth: 1, borderColor: AppColors.hairline,
-    borderRadius: 12, paddingHorizontal: 14,
-    color: AppColors.text, fontSize: 15,
+  daysText: { color: AppColors.meetings, fontSize: 22, fontWeight: '700' },
+  dateSubtext: { color: AppColors.textMuted, fontSize: 13 },
+  dateInput: {
+    width: '100%', backgroundColor: AppColors.screen,
+    borderWidth: 1, borderColor: AppColors.accent,
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10,
+    color: AppColors.text, fontSize: 16, letterSpacing: 1,
     outlineStyle: 'none' as any,
   },
-  eyeBtn: { padding: 10 },
+  dateBtn: { paddingVertical: 11, paddingHorizontal: 18, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  dateBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 
-  saveBtn: {
-    width: '100%', height: 46, backgroundColor: AppColors.accent,
-    borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
+  sectionTitle: { color: AppColors.text, fontSize: 16, fontWeight: '600' },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderWidth: 1, borderColor: AppColors.accent,
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
   },
-  saveBtnDisabled: { opacity: 0.4 },
-  saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  savedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' },
-  savedText: { color: AppColors.meetings, fontSize: 13 },
+  editBtnText: { color: AppColors.accent, fontSize: 13, fontWeight: '500' },
 
-  note: {
-    flexDirection: 'row', gap: 12,
-    backgroundColor: AppColors.tile,
-    borderWidth: 1, borderColor: AppColors.tileBorder,
-    borderRadius: 14, padding: 14, alignItems: 'flex-start',
-  },
-  noteTitle: { color: AppColors.text, fontSize: 14, fontWeight: '600' },
-  noteText: { color: AppColors.textMuted, fontSize: 13, marginTop: 2, lineHeight: 18 },
+  divider: { height: 1, backgroundColor: AppColors.hairline, width: '100%' },
 
   signOutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

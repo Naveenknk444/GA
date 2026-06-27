@@ -65,3 +65,15 @@ export async function addComment(postId: string, authorId: string, body: string)
     .insert({ post_id: postId, author_id: authorId, body });
   if (error) throw error;
 }
+
+export async function createPost(
+  authorId: string,
+  category: 'discussion' | 'support' | 'milestone',
+  title: string,
+  body: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('posts')
+    .insert({ author_id: authorId, category, title, body });
+  if (error) throw error;
+}
