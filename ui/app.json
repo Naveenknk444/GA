@@ -1,14 +1,16 @@
 {
   "expo": {
-    "name": "ui",
-    "slug": "ui",
+    "name": "Recovery Community",
+    "slug": "recovery-community",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "ui",
-    "userInterfaceStyle": "automatic",
+    "scheme": "recovery-community",
+    "userInterfaceStyle": "dark",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.garecovery.community",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
@@ -28,7 +30,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0B0908",
           "android": {
             "image": "./assets/images/splash-icon.png",
             "imageWidth": 76
