@@ -1,16 +1,77 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { addComment, fetchPostById, type CommentRow, type PostDetail } from '@/api/posts';
 import { DesertBackdrop } from '@/components/desert-backdrop';
 import { AppColors } from '@/constants/appTheme';
-import { getPost } from '@/data/posts';
+import { useAuth } from '@/context/auth';
+
+const CATEGORY_META = {
+  discussion: { label: 'DISCUSSION', color: AppColors.talk },
+  support:    { label: 'SUPPORT',    color: '#34D399' },
+  milestone:  { label: 'MILESTONE',  color: AppColors.share },
+};
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
 export default function PostDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const post = getPost(id ?? 'rough-night');
+  const { user } = useAuth();
+
+  const [post, setPost] = useState<PostDetail | null>(null);
+  const [comments, setComments] = useState<CommentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [reply, setReply] = useState('');
+  const [sending, setSending] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    fetchPostById(id).then((result) => {
+      if (result) {
+        setPost(result.post);
+        setComments(result.comments);
+      }
+      setLoading(false);
+    });
+  }, [id]);
+
+  async function handleSendReply() {
+    if (!reply.trim() || !user || !id) return;
+    setSending(true);
+    try {
+      await addComment(id, user.id, reply.trim());
+      setReply('');
+      // refresh comments
+      const result = await fetchPostById(id);
+      if (result) setComments(result.comments);
+      scrollRef.current?.scrollToEnd({ animated: true });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={AppColors.accent} size="large" />
+      </View>
+    );
+  }
 
   if (!post) {
     return (
@@ -19,6 +80,8 @@ export default function PostDetailScreen() {
       </View>
     );
   }
+
+  const meta = CATEGORY_META[post.category];
 
   return (
     <View style={styles.root}>
@@ -32,16 +95,16 @@ export default function PostDetailScreen() {
           <Ionicons name="ellipsis-horizontal" size={22} color={AppColors.text} />
         </View>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
+        <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
           {/* post header */}
           <View style={styles.postHead}>
-            <View style={[styles.avatar, { backgroundColor: post.color + '22' }]}>
-              <Ionicons name="person" size={18} color={post.color} />
+            <View style={[styles.avatar, { backgroundColor: meta.color + '22' }]}>
+              <Ionicons name="person" size={18} color={meta.color} />
             </View>
-            <Text style={styles.author}>{post.author}</Text>
+            <Text style={styles.author}>{post.profiles?.handle ?? 'Member'}</Text>
             <Text style={styles.dot}>·</Text>
-            <Text style={styles.muted}>{post.timeAgo}</Text>
-            <Text style={styles.tag}>{post.category.toUpperCase()}</Text>
+            <Text style={styles.muted}>{timeAgo(post.created_at)}</Text>
+            <Text style={[styles.tag, { color: meta.color }]}>{meta.label}</Text>
           </View>
 
           <Text style={styles.title}>{post.title}</Text>
@@ -51,15 +114,7 @@ export default function PostDetailScreen() {
           <View style={styles.actions}>
             <View style={styles.action}>
               <Ionicons name="chatbubble-outline" size={18} color={AppColors.textMuted} />
-              <Text style={styles.actionText}>{post.replies.length} replies</Text>
-            </View>
-            <View style={styles.action}>
-              <Ionicons name="heart" size={18} color="#F2616B" />
-              <Text style={styles.actionText}>{post.likes}</Text>
-            </View>
-            <View style={styles.action}>
-              <Ionicons name="bookmark-outline" size={18} color={AppColors.textMuted} />
-              <Text style={styles.actionText}>Save</Text>
+              <Text style={styles.actionText}>{comments.length} replies</Text>
             </View>
           </View>
 
@@ -67,31 +122,28 @@ export default function PostDetailScreen() {
 
           {/* replies header */}
           <View style={styles.repliesHead}>
-            <Text style={styles.repliesCount}>{post.replies.length} replies</Text>
-            <Text style={styles.muted}>Oldest ▾</Text>
+            <Text style={styles.repliesCount}>{comments.length} replies</Text>
           </View>
 
-          {/* replies */}
+          {/* comments */}
           <View style={{ gap: 16 }}>
-            {post.replies.map((r) => (
-              <View key={r.id} style={styles.reply}>
+            {comments.length === 0 && (
+              <Text style={[styles.muted, { textAlign: 'center', paddingVertical: 12 }]}>
+                No replies yet. Be the first.
+              </Text>
+            )}
+            {comments.map((c) => (
+              <View key={c.id} style={styles.reply}>
                 <View style={[styles.replyAvatar, { backgroundColor: AppColors.talk + '22' }]}>
                   <Ionicons name="person" size={14} color={AppColors.talk} />
                 </View>
                 <View style={{ flex: 1, gap: 4 }}>
                   <View style={styles.replyMeta}>
-                    <Text style={styles.replyAuthor}>{r.author}</Text>
+                    <Text style={styles.replyAuthor}>{c.profiles?.handle ?? 'Member'}</Text>
                     <Text style={styles.dot}>·</Text>
-                    <Text style={styles.muted}>{r.timeAgo}</Text>
+                    <Text style={styles.muted}>{timeAgo(c.created_at)}</Text>
                   </View>
-                  <Text style={styles.replyBody}>{r.body}</Text>
-                  <View style={styles.replyActions}>
-                    <View style={styles.action}>
-                      <Ionicons name="heart-outline" size={15} color={AppColors.textMuted} />
-                      {r.likes > 0 && <Text style={styles.smallMuted}>{r.likes}</Text>}
-                    </View>
-                    <Text style={styles.replyLink}>Reply</Text>
-                  </View>
+                  <Text style={styles.replyBody}>{c.body}</Text>
                 </View>
               </View>
             ))}
@@ -104,9 +156,17 @@ export default function PostDetailScreen() {
             placeholder="Write a reply..."
             placeholderTextColor={AppColors.textMuted}
             style={styles.composerInput}
+            value={reply}
+            onChangeText={setReply}
+            multiline
           />
-          <Pressable style={styles.send}>
-            <Ionicons name="send" size={16} color="#fff" />
+          <Pressable
+            style={[styles.send, (!reply.trim() || sending) && { opacity: 0.4 }]}
+            onPress={handleSendReply}
+            disabled={!reply.trim() || sending}>
+            {sending
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Ionicons name="send" size={16} color="#fff" />}
           </Pressable>
         </View>
       </SafeAreaView>
@@ -117,7 +177,6 @@ export default function PostDetailScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: AppColors.screen },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: AppColors.screen },
-  band: { position: 'absolute', top: 0, left: 0, right: 0, height: 180 },
   safe: { flex: 1, paddingHorizontal: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, marginBottom: 8 },
   postHead: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
@@ -125,8 +184,7 @@ const styles = StyleSheet.create({
   author: { color: AppColors.text, fontSize: 14, fontWeight: '600' },
   dot: { color: AppColors.textMuted, fontSize: 13 },
   muted: { color: AppColors.textMuted, fontSize: 13 },
-  smallMuted: { color: AppColors.textMuted, fontSize: 12 },
-  tag: { color: AppColors.accent, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  tag: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
   title: { color: AppColors.text, fontSize: 22, fontWeight: '700', marginTop: 14 },
   body: { color: '#D6DAE0', fontSize: 15, lineHeight: 22, marginTop: 8 },
   actions: { flexDirection: 'row', gap: 22, marginTop: 16 },
@@ -140,17 +198,17 @@ const styles = StyleSheet.create({
   replyMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   replyAuthor: { color: AppColors.text, fontSize: 13, fontWeight: '600' },
   replyBody: { color: '#D6DAE0', fontSize: 14, lineHeight: 20 },
-  replyActions: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 4 },
-  replyLink: { color: AppColors.accent, fontSize: 13, fontWeight: '500' },
   composer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
   composerInput: {
     flex: 1,
-    height: 44,
+    minHeight: 44,
+    maxHeight: 100,
     backgroundColor: AppColors.tile,
     borderWidth: 1,
     borderColor: AppColors.tileBorder,
     borderRadius: 22,
     paddingHorizontal: 16,
+    paddingVertical: 10,
     color: AppColors.text,
     fontSize: 14,
     outlineStyle: 'none' as any,
