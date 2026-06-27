@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/context/auth';
+import { DrawerProvider, DRAWER_WIDTH, useDrawer } from '@/context/drawer';
 import { LoginScreen } from '@/components/login-screen';
+import { SideMenu } from '@/components/side-menu';
 import { AppColors } from '@/constants/appTheme';
 
 const isWeb = Platform.OS === 'web';
@@ -13,17 +15,35 @@ export default function RootLayout() {
     <AuthProvider>
       <View style={styles.page}>
         <View style={styles.phone}>
-          <AppGate />
+          <DrawerProvider>
+            <DrawerLayout />
+          </DrawerProvider>
         </View>
       </View>
     </AuthProvider>
   );
 }
 
-/**
- * Shows a spinner while auth loads, the login screen if no user,
- * or the full tab navigator once the user is signed in.
- */
+function DrawerLayout() {
+  const { drawerAnim, contentAnim, isOpen, close } = useDrawer();
+
+  return (
+    <View style={{ flex: 1, overflow: 'hidden' }}>
+      {/* Drawer panel — slides in from the left */}
+      <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerAnim }] }]}>
+        <SideMenu />
+      </Animated.View>
+
+      {/* Main content — pushed right when drawer opens */}
+      <Animated.View style={{ flex: 1, transform: [{ translateX: contentAnim }] }}>
+        <AppGate />
+        {/* Invisible tap-to-close overlay when drawer is open */}
+        {isOpen && <Pressable style={StyleSheet.absoluteFill} onPress={close} />}
+      </Animated.View>
+    </View>
+  );
+}
+
 function AppGate() {
   const { user, loading } = useAuth();
 
@@ -130,4 +150,17 @@ const styles = StyleSheet.create({
       }
     : { flex: 1, width: '100%' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: AppColors.screen },
+  drawer: {
+    position: 'absolute',
+    left: 0, top: 0, bottom: 0,
+    width: DRAWER_WIDTH,
+    zIndex: 100,
+    borderRightWidth: 1,
+    borderRightColor: AppColors.hairline,
+    shadowColor: '#000',
+    shadowOffset: { width: 6, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 24,
+  },
 });

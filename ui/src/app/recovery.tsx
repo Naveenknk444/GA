@@ -16,6 +16,7 @@ import { fetchResources, type Resource } from '@/api/resources';
 import { DesertBackdrop } from '@/components/desert-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
+import { useDrawer } from '@/context/drawer';
 
 // ─── constants ────────────────────────────────────────────────────
 const TABS = [
@@ -440,6 +441,7 @@ function ConfirmModal({
 // ─── Main screen ──────────────────────────────────────────────────
 export default function RecoveryScreen() {
   const { user } = useAuth();
+  const { open } = useDrawer();
   const router = useRouter();
 
   const [tab, setTab] = useState<Tab>('start');
@@ -531,7 +533,13 @@ export default function RecoveryScreen() {
     <View style={s.root}>
       <DesertBackdrop variant="band" height={180} />
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-        <Text style={s.screenTitle}>Recovery</Text>
+        <View style={s.headerRow}>
+          <Pressable onPress={open} hitSlop={10}>
+            <Ionicons name="menu" size={26} color={AppColors.text} />
+          </Pressable>
+          <Text style={s.screenTitle}>Recovery</Text>
+          <View style={{ width: 26 }} />
+        </View>
 
         {/* tab bar */}
         <View style={s.tabBar}>
@@ -593,7 +601,8 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: AppColors.screen },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: AppColors.screen },
   safe: { flex: 1, paddingHorizontal: 20 },
-  screenTitle: { color: AppColors.text, fontSize: 24, fontWeight: '700', paddingTop: 12, marginBottom: 14 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, marginBottom: 14 },
+  screenTitle: { color: AppColors.text, fontSize: 24, fontWeight: '700' },
 
   tabBar: { flexDirection: 'row', backgroundColor: AppColors.tile, borderRadius: 12, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: AppColors.tileBorder },
   tabItem: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 9 },

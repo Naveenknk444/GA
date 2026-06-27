@@ -4,6 +4,7 @@ import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, Vi
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchProfile, updateCleanDate, updateHandle, updatePersonalInfo } from '@/api/profile';
+import { useDrawer } from '@/context/drawer';
 import { DatePickerInput } from '@/components/date-picker-input';
 import { DesertBackdrop } from '@/components/desert-backdrop';
 import { AppColors } from '@/constants/appTheme';
@@ -66,6 +67,7 @@ const row = StyleSheet.create({
 // ── main screen ──────────────────────────────────────────────────
 export default function ProfileScreen() {
   const { user, shortId, loading } = useAuth();
+  const { open } = useDrawer();
 
   // member handle
   const [handle, setHandle] = useState('');
@@ -173,7 +175,13 @@ export default function ProfileScreen() {
     <View style={styles.root}>
       <DesertBackdrop variant="band" height={180} />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <Text style={styles.screenTitle}>Profile</Text>
+        <View style={styles.headerRow}>
+          <Pressable onPress={open} hitSlop={10}>
+            <Ionicons name="menu" size={26} color={AppColors.text} />
+          </Pressable>
+          <Text style={styles.screenTitle}>Profile</Text>
+          <View style={{ width: 26 }} />
+        </View>
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
@@ -301,7 +309,8 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: AppColors.screen },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: AppColors.screen },
   safe: { flex: 1, paddingHorizontal: 20 },
-  screenTitle: { color: AppColors.text, fontSize: 24, fontWeight: '700', paddingTop: 12, marginBottom: 20 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, marginBottom: 20 },
+  screenTitle: { color: AppColors.text, fontSize: 24, fontWeight: '700' },
   scroll: { gap: 16, paddingBottom: 36 },
 
   card: {

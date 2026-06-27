@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DesertBackdrop } from '@/components/desert-backdrop';
 import { AppColors } from '@/constants/appTheme';
+import { useDrawer } from '@/context/drawer';
 
 const TILES = [
   { key: 'talk',     label: 'Talk',     icon: 'chatbubbles', color: AppColors.talk,     route: '/talk' },
@@ -28,6 +29,7 @@ const QUOTES = [
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { open } = useDrawer();
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [fading, setFading] = useState(false);
 
@@ -52,7 +54,9 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         {/* Top bar */}
         <View style={styles.header}>
-          <Ionicons name="menu" size={26} color={AppColors.text} />
+          <Pressable onPress={open} hitSlop={10}>
+            <Ionicons name="menu" size={26} color={AppColors.text} />
+          </Pressable>
           <Ionicons name="notifications-outline" size={24} color={AppColors.text} />
         </View>
 

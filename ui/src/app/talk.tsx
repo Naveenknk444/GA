@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchPosts, type PostSummary } from '@/api/posts';
 import { DesertBackdrop } from '@/components/desert-backdrop';
 import { AppColors } from '@/constants/appTheme';
+import { useDrawer } from '@/context/drawer';
 
 const FILTERS = ['All', 'Discussion', 'Support', 'Milestones'] as const;
 
@@ -30,6 +31,7 @@ function timeAgo(dateStr: string): string {
 
 export default function TalkScreen() {
   const router = useRouter();
+  const { open } = useDrawer();
   const [active, setActive] = useState<(typeof FILTERS)[number]>('All');
   const [posts, setPosts] = useState<PostSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +56,9 @@ export default function TalkScreen() {
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
-          <View style={{ width: 24 }} />
+          <Pressable onPress={open} hitSlop={10}>
+            <Ionicons name="menu" size={26} color={AppColors.text} />
+          </Pressable>
           <Ionicons name="notifications-outline" size={24} color={AppColors.text} />
         </View>
 

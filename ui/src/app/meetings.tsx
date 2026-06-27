@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchMeetings } from '@/api/meetings';
 import { DesertBackdrop } from '@/components/desert-backdrop';
 import { AppColors } from '@/constants/appTheme';
+import { useDrawer } from '@/context/drawer';
 import type { Meeting } from '@/data/meetings';
 
 const CHIPS = ['Nearby', 'Today', 'Online', 'All Meetings'] as const;
@@ -15,6 +16,7 @@ const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Satur
 
 export default function MeetingsScreen() {
   const router = useRouter();
+  const { open } = useDrawer();
   const [chip, setChip] = useState<(typeof CHIPS)[number]>('All Meetings');
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [source, setSource] = useState<'loading' | 'live' | 'sample'>('loading');
@@ -50,6 +52,9 @@ export default function MeetingsScreen() {
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
+          <Pressable onPress={open} hitSlop={10}>
+            <Ionicons name="menu" size={26} color={AppColors.text} />
+          </Pressable>
           <Text style={styles.title}>Meetings</Text>
           <Ionicons name="location-outline" size={24} color={AppColors.text} />
         </View>
