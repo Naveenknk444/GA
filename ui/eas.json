@@ -4,7 +4,11 @@
   },
   "build": {
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ciiidfpdrrlyopmfqxtg.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpaWlkZnBkcnJseW9wbWZxeHRnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwODgwMDksImV4cCI6MjA5NzY2NDAwOX0.v7S6gsJNphFbh-tAO33Ki3FUaXE6fv8XylBej2ih-IM"
+      }
     }
   },
   "submit": {
