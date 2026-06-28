@@ -34,6 +34,9 @@ export default function MeetingDetailScreen() {
     );
   }
 
+  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const isToday = meeting.day === DAYS[new Date().getDay()];
+
   const rows = [
     { icon: 'calendar-outline', label: 'Day & Time', value: `${meeting.day} at ${meeting.time}` },
     {
@@ -69,9 +72,9 @@ export default function MeetingDetailScreen() {
             <Text style={styles.name}>{meeting.name}</Text>
             <Text style={styles.type}>{meeting.type}</Text>
             <View style={styles.happening}>
-              <View style={styles.dot} />
-              <Text style={styles.happeningText}>
-                Happening today · {meeting.time}
+              <View style={[styles.dot, !isToday && { backgroundColor: AppColors.textMuted }]} />
+              <Text style={[styles.happeningText, !isToday && { color: AppColors.textMuted }]}>
+                {isToday ? 'Happening today' : meeting.day} · {meeting.time}
               </Text>
             </View>
           </View>

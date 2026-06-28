@@ -10,7 +10,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.garecovery.community",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {

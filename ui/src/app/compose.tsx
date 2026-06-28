@@ -51,6 +51,15 @@ const CATEGORY_LABEL: Record<Category, string> = {
   milestone: 'Milestone',
 };
 
+const DOLLAR_RE = /\$\s*\d/;
+const GAMBLING_WORDS_RE = /\b(bets?|betting|wagered?|wagers?|jackpot)\b/i;
+
+function contentError(text: string): string | null {
+  if (DOLLAR_RE.test(text))         return "Please don't include specific dollar amounts — focus on feelings and recovery.";
+  if (GAMBLING_WORDS_RE.test(text)) return 'Please avoid gambling-specific terms like "bet" or "wager" — focus on your journey.';
+  return null;
+}
+
 export default function ComposeScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -78,6 +87,8 @@ export default function ComposeScreen() {
 
   async function handlePost() {
     if (!user || !category || !title.trim() || !body.trim()) return;
+    const err = contentError(title + ' ' + body);
+    if (err) { setError(err); return; }
     setPosting(true);
     setError('');
     try {

@@ -88,8 +88,17 @@ export default function TalkScreen() {
             {filtered.length === 0 && (
               <View style={styles.empty}>
                 <Ionicons name="chatbubbles-outline" size={36} color={AppColors.textMuted} />
-                <Text style={styles.emptyText}>No posts yet</Text>
-                <Text style={styles.emptyHint}>Be the first to post in this category</Text>
+                {posts.length === 0 ? (
+                  <>
+                    <Text style={styles.emptyText}>No posts yet</Text>
+                    <Text style={styles.emptyHint}>Be the first to share with the community</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.emptyText}>Nothing here</Text>
+                    <Text style={styles.emptyHint}>No posts in this category yet</Text>
+                  </>
+                )}
               </View>
             )}
 

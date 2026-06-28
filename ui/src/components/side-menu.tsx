@@ -93,6 +93,28 @@ export function SideMenu() {
 
         <View style={s.divider} />
 
+        {/* ── Tools ── */}
+        <Text style={s.sectionLabel}>TOOLS</Text>
+        <Pressable
+          onPress={() => navigate('/pressure-relief')}
+          style={({ pressed }) => [
+            s.navItem,
+            isActive('/pressure-relief') && s.navItemActive,
+            pressed && { opacity: 0.7 },
+          ]}>
+          {isActive('/pressure-relief') && <View style={s.activeBorder} />}
+          <Ionicons
+            name={isActive('/pressure-relief') ? 'wallet' : 'wallet-outline'}
+            size={20}
+            color={isActive('/pressure-relief') ? '#E0A53E' : AppColors.text}
+          />
+          <Text style={[s.navLabel, isActive('/pressure-relief') && { color: '#E0A53E', fontWeight: '700' }]}>
+            Pressure Relief Group
+          </Text>
+        </Pressable>
+
+        <View style={s.divider} />
+
         {/* ── GA Hotline ── */}
         <Pressable onPress={() => Linking.openURL('tel:18005224700')}
           style={({ pressed }) => [s.navItem, pressed && { opacity: 0.7 }]}>
@@ -161,6 +183,11 @@ const s = StyleSheet.create({
   navLabelActive: { color: AppColors.accent, fontWeight: '700' },
   navSub: { color: AppColors.textMuted, fontSize: 11, marginTop: 1 },
 
+  sectionLabel: {
+    color: AppColors.textMuted, fontSize: 10, fontWeight: '700',
+    letterSpacing: 0.8, textTransform: 'uppercase',
+    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 2,
+  },
   version: {
     color: AppColors.textMuted, fontSize: 11,
     paddingHorizontal: 20, paddingTop: 4, paddingBottom: 10,
