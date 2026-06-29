@@ -59,7 +59,7 @@ export default function TalkScreen() {
           <Pressable onPress={open} hitSlop={10}>
             <Ionicons name="menu" size={26} color={AppColors.text} />
           </Pressable>
-          <Ionicons name="notifications-outline" size={24} color={AppColors.text} />
+          <View style={{ width: 24 }} />
         </View>
 
         <Text style={styles.title}>Talk</Text>

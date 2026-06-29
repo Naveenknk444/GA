@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { addComment, fetchPostById, type CommentRow, type PostDetail } from '@/api/posts';
@@ -92,7 +92,11 @@ export default function PostDetailScreen() {
           <Pressable onPress={() => router.back()} hitSlop={10}>
             <Ionicons name="chevron-back" size={26} color={AppColors.text} />
           </Pressable>
-          <Ionicons name="ellipsis-horizontal" size={22} color={AppColors.text} />
+          <Pressable
+            hitSlop={10}
+            onPress={() => post && Share.share({ title: post.title, message: post.body })}>
+            <Ionicons name="share-outline" size={22} color={AppColors.text} />
+          </Pressable>
         </View>
 
         <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>

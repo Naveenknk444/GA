@@ -33,7 +33,7 @@ export async function fetchPosts(): Promise<PostSummary[]> {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return (data ?? []) as PostSummary[];
+  return (data ?? []) as unknown as PostSummary[];
 }
 
 export async function fetchPostById(
@@ -54,8 +54,8 @@ export async function fetchPostById(
 
   if (postRes.error || !postRes.data) return null;
   return {
-    post: postRes.data as PostDetail,
-    comments: (commentsRes.data ?? []) as CommentRow[],
+    post: postRes.data as unknown as PostDetail,
+    comments: (commentsRes.data ?? []) as unknown as CommentRow[],
   };
 }
 

@@ -6,13 +6,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DesertBackdrop } from '@/components/desert-backdrop';
 import { AppColors } from '@/constants/appTheme';
+import { useAuth } from '@/context/auth';
 import { useDrawer } from '@/context/drawer';
+import { fetchDayBlocks, todayDate, todayName, type BlockWithLog } from '@/api/schedule';
 
 const TILES = [
   { key: 'talk',     label: 'Talk',     icon: 'chatbubbles', color: AppColors.talk,     route: '/talk' },
   { key: 'meetings', label: 'Meetings', icon: 'people',      color: AppColors.meetings, route: '/meetings' },
   { key: 'recovery', label: 'Recovery', icon: 'leaf',        color: AppColors.recovery, route: '/recovery' },
-  { key: 'share',    label: 'Share',    icon: 'paper-plane', color: AppColors.share,    route: '/talk' },
+  { key: 'share',    label: 'Share',    icon: 'paper-plane', color: AppColors.share,    route: '/compose' },
 ] as const;
 
 // Authentic GA program phrases and principles.
@@ -27,11 +29,24 @@ const QUOTES = [
   { text: 'Easy does it. First things first. One day at a time.', source: 'GA Slogans' },
 ];
 
+function fmt(t: string): string {
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h < 12 ? 'AM' : 'PM';
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const { open } = useDrawer();
+  const { user } = useAuth();
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [fading, setFading] = useState(false);
+  const [todayBlocks, setTodayBlocks] = useState<BlockWithLog[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchDayBlocks(user.id, todayName(), todayDate()).then(setTodayBlocks);
+  }, [user]);
 
   // Rotate quotes every 6 seconds.
   useEffect(() => {
@@ -57,7 +72,7 @@ export default function HomeScreen() {
           <Pressable onPress={open} hitSlop={10}>
             <Ionicons name="menu" size={26} color={AppColors.text} />
           </Pressable>
-          <Ionicons name="notifications-outline" size={24} color={AppColors.text} />
+          <View style={{ width: 24 }} />
         </View>
 
         {/* Hero — centered logo + rotating quote */}
@@ -70,7 +85,7 @@ export default function HomeScreen() {
 
           {/* Quote card */}
           <View style={[styles.quoteCard, fading && styles.quoteFading]}>
-            <Ionicons name="quote" size={18} color={AppColors.accent} style={styles.quoteIcon} />
+            <Ionicons name="chatbubble-ellipses-outline" size={18} color={AppColors.accent} style={styles.quoteIcon} />
             <Text style={styles.quoteText}>{quote.text}</Text>
             <Text style={styles.quoteSource}>— {quote.source}</Text>
           </View>
@@ -99,6 +114,24 @@ export default function HomeScreen() {
               <Text style={styles.tileLabel}>{t.label}</Text>
             </Pressable>
           ))}
+
+          {/* 5th tile — full width */}
+          <Pressable
+            style={({ pressed }) => [styles.tile, styles.tileFull, pressed && styles.tilePressed]}
+            onPress={() => router.push('/schedule')}>
+            <View style={[styles.iconBadge, { backgroundColor: AppColors.accent + '22' }]}>
+              <Ionicons name="calendar-number" size={26} color={AppColors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.tileLabel}>Schedule</Text>
+              {todayBlocks.length > 0 && (
+                <Text style={styles.tileSub} numberOfLines={1}>
+                  {todayBlocks.filter(b => !b.log?.completed).length} remaining today
+                </Text>
+              )}
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={AppColors.textMuted} />
+          </Pressable>
         </View>
       </SafeAreaView>
     </View>
@@ -186,4 +219,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   tileLabel: { color: AppColors.text, fontSize: 16, fontWeight: '600' },
+  tileFull: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14, height: 72 },
+  tileSub:  { color: AppColors.textMuted, fontSize: 12, marginTop: 2 },
 });

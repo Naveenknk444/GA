@@ -10,7 +10,7 @@ import { AppColors } from '@/constants/appTheme';
 import { useDrawer } from '@/context/drawer';
 import type { Meeting } from '@/data/meetings';
 
-const CHIPS = ['Nearby', 'Today', 'Online', 'All Meetings'] as const;
+const CHIPS = ['All Meetings', 'Today', 'Online'] as const;
 
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
@@ -87,10 +87,10 @@ export default function MeetingsScreen() {
         </ScrollView>
 
         <View style={styles.metaRow}>
+          <Text style={styles.metaText}>
+            {source === 'loading' ? 'Loading…' : `${filtered.length} meetings found`}
+          </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={styles.metaText}>
-              {source === 'loading' ? 'Loading…' : `${filtered.length} meetings found`}
-            </Text>
             {source === 'live' && (
               <View style={styles.liveBadge}>
                 <View style={styles.liveDot} />
@@ -99,7 +99,6 @@ export default function MeetingsScreen() {
             )}
             {source === 'sample' && <Text style={styles.sampleText}>Sample data</Text>}
           </View>
-          <Text style={styles.metaText}>Sort by: Distance ▾</Text>
         </View>
 
         {/* list */}

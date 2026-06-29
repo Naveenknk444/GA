@@ -126,6 +126,7 @@ function AppGate() {
       <Tabs.Screen name="meeting-detail" options={{ href: null }} />
       <Tabs.Screen name="post-detail" options={{ href: null }} />
       <Tabs.Screen name="pressure-relief" options={{ href: null }} />
+      <Tabs.Screen name="schedule" options={{ href: null }} />
     </Tabs>
   );
 }

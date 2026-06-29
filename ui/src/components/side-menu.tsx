@@ -115,6 +115,26 @@ export function SideMenu() {
 
         <View style={s.divider} />
 
+        <Pressable
+          onPress={() => navigate('/schedule')}
+          style={({ pressed }) => [
+            s.navItem,
+            isActive('/schedule') && s.navItemActive,
+            pressed && { opacity: 0.7 },
+          ]}>
+          {isActive('/schedule') && <View style={s.activeBorder} />}
+          <Ionicons
+            name={isActive('/schedule') ? 'calendar-number' : 'calendar-number-outline'}
+            size={20}
+            color={isActive('/schedule') ? AppColors.accent : AppColors.text}
+          />
+          <Text style={[s.navLabel, isActive('/schedule') && { color: AppColors.accent, fontWeight: '700' }]}>
+            Schedule
+          </Text>
+        </Pressable>
+
+        <View style={s.divider} />
+
         {/* ── GA Hotline ── */}
         <Pressable onPress={() => Linking.openURL('tel:18005224700')}
           style={({ pressed }) => [s.navItem, pressed && { opacity: 0.7 }]}>

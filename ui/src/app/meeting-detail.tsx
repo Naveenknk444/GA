@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchMeeting } from '@/api/meetings';
@@ -57,10 +57,14 @@ export default function MeetingDetailScreen() {
           <Pressable onPress={() => router.back()} hitSlop={10}>
             <Ionicons name="chevron-back" size={26} color={AppColors.text} />
           </Pressable>
-          <View style={{ flexDirection: 'row', gap: 16 }}>
-            <Ionicons name="bookmark-outline" size={22} color={AppColors.text} />
-            <Ionicons name="ellipsis-horizontal" size={22} color={AppColors.text} />
-          </View>
+          <Pressable
+            hitSlop={10}
+            onPress={() => Share.share({
+              title: meeting.name,
+              message: `${meeting.name} — ${meeting.day} at ${meeting.time}\n${meeting.online ? 'Online meeting' : `${meeting.address}, ${meeting.city}, ${meeting.state} ${meeting.zip}`}`,
+            })}>
+            <Ionicons name="share-outline" size={22} color={AppColors.text} />
+          </Pressable>
         </View>
 
         <ScrollView contentContainerStyle={{ paddingBottom: 24, gap: 14 }}>
@@ -94,26 +98,17 @@ export default function MeetingDetailScreen() {
           </View>
 
           {/* action buttons */}
-          <View style={styles.actionRow}>
-            <View style={[styles.actionBtn, { borderColor: AppColors.accent }]}>
+          {!meeting.online && (
+            <Pressable
+              style={[styles.actionBtn, { borderColor: AppColors.accent }]}
+              onPress={() => {
+                const addr = encodeURIComponent(`${meeting.address}, ${meeting.city}, ${meeting.state} ${meeting.zip}`);
+                Linking.openURL(`https://maps.google.com/?q=${addr}`);
+              }}>
               <Ionicons name="navigate" size={18} color={AppColors.accent} />
-              <Text style={[styles.actionText, { color: AppColors.accent }]}>Directions</Text>
-            </View>
-            <View style={[styles.actionBtn, { borderColor: AppColors.meetings }]}>
-              <Ionicons name="call" size={18} color={AppColors.meetings} />
-              <Text style={[styles.actionText, { color: AppColors.meetings }]}>Call Location</Text>
-            </View>
-          </View>
-          <View style={styles.actionRow}>
-            <View style={styles.actionBtnGhost}>
-              <Ionicons name="calendar-outline" size={18} color={AppColors.text} />
-              <Text style={[styles.actionText, { color: AppColors.text }]}>Add to Calendar</Text>
-            </View>
-            <View style={styles.actionBtnGhost}>
-              <Ionicons name="share-outline" size={18} color={AppColors.text} />
-              <Text style={[styles.actionText, { color: AppColors.text }]}>Share Meeting</Text>
-            </View>
-          </View>
+              <Text style={[styles.actionText, { color: AppColors.accent }]}>Get Directions</Text>
+            </Pressable>
+          )}
 
           {/* about */}
           <View style={{ gap: 6 }}>
@@ -160,28 +155,14 @@ const styles = StyleSheet.create({
   },
   infoLabel: { color: AppColors.textMuted, fontSize: 12 },
   infoValue: { color: AppColors.text, fontSize: 15, marginTop: 2 },
-  actionRow: { flexDirection: 'row', gap: 12 },
   actionBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     borderWidth: 1,
     borderRadius: 12,
-    paddingVertical: 12,
-  },
-  actionBtnGhost: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: AppColors.tileBorder,
-    backgroundColor: AppColors.tile,
-    borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 13,
   },
   actionText: { fontSize: 14, fontWeight: '500' },
   aboutTitle: { color: AppColors.text, fontSize: 16, fontWeight: '600', marginTop: 4 },
