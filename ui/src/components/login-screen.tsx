@@ -11,13 +11,8 @@ import { useAuth } from '@/context/auth';
 
 type Mode = 'new' | 'returning';
 
-const MEMBER_ID_RE = /^[a-z0-9_]{4,20}$/;
+const MEMBER_ID_RE = /^[a-zA-Z0-9_]{4,20}$/;
 
-function isValidDate(d: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
-  const date = new Date(d);
-  return !isNaN(date.getTime()) && date < new Date();
-}
 
 export function LoginScreen() {
   const { signIn, signInWithMemberId, checkMemberIdAvailable } = useAuth();
@@ -26,15 +21,16 @@ export function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [memberId, setMemberId]   = useState('');
-  const [cleanDate, setCleanDate] = useState('');
+  const [password, setPassword]   = useState('');
+  const [confirmPw, setConfirmPw]   = useState('');
+  const [showPw, setShowPw]         = useState(false);
 
   // New member only
-  const [checking,   setChecking]   = useState(false);
-  const [available,  setAvailable]  = useState<boolean | null>(null);
+  const [checking,  setChecking]  = useState(false);
+  const [available, setAvailable] = useState<boolean | null>(null);
 
   function handleMemberIdChange(v: string) {
-    // auto-lowercase, strip invalid chars
-    setMemberId(v.toLowerCase().replace(/[^a-z0-9_]/g, ''));
+    setMemberId(v.replace(/[^a-zA-Z0-9_]/g, ''));
     setAvailable(null);
     setError(null);
   }
@@ -58,25 +54,30 @@ export function LoginScreen() {
   }
 
   async function handleCreate() {
-    const id   = memberId.trim();
-    const date = cleanDate.trim();
+    const id = memberId.trim();
+    const pw = password.trim();
+
     if (!MEMBER_ID_RE.test(id)) {
-      setError('Invalid Member ID format.'); return;
+      setError('Invalid username format.'); return;
     }
     if (available !== true) {
-      setError('Check that your Member ID is available first.'); return;
+      setError('Check that your username is available first.'); return;
     }
-    if (!isValidDate(date)) {
-      setError('Enter a valid past date in YYYY-MM-DD format.'); return;
+    if (pw.length < 6) {
+      setError('Password must be at least 6 characters.'); return;
     }
+    if (pw !== confirmPw.trim()) {
+      setError('Passwords do not match.'); return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      await signIn(id, date);
+      await signIn(id, pw);
     } catch (e: any) {
       const msg: string = e?.message ?? '';
       if (msg.includes('already registered') || msg.includes('unique')) {
-        setError('That Member ID was just taken. Try a different one.');
+        setError('That username was just taken. Try a different one.');
       } else {
         setError('Account creation failed. Please try again.');
       }
@@ -86,23 +87,20 @@ export function LoginScreen() {
   }
 
   async function handleSignIn() {
-    const id   = memberId.trim();
-    const date = cleanDate.trim();
-    if (!id || !date) {
-      setError('Enter your Member ID and recovery date.'); return;
+    const id = memberId.trim();
+    const pw = password.trim();
+    if (!id || !pw) {
+      setError('Enter your username and password.'); return;
     }
     if (!MEMBER_ID_RE.test(id)) {
-      setError('Invalid Member ID format.'); return;
-    }
-    if (!isValidDate(date)) {
-      setError('Enter a valid date in YYYY-MM-DD format.'); return;
+      setError('Invalid username format.'); return;
     }
     setLoading(true);
     setError(null);
     try {
-      await signInWithMemberId(id, date);
+      await signInWithMemberId(id, pw);
     } catch {
-      setError('Member ID or recovery date is incorrect.');
+      setError('Username or password is incorrect.');
     } finally {
       setLoading(false);
     }
@@ -112,14 +110,16 @@ export function LoginScreen() {
     setMode(m);
     setError(null);
     setMemberId('');
-    setCleanDate('');
+    setPassword('');
+    setConfirmPw('');
     setAvailable(null);
   }
 
   const canCreate =
     MEMBER_ID_RE.test(memberId.trim()) &&
     available === true &&
-    isValidDate(cleanDate.trim());
+    password.trim().length >= 6 &&
+    password.trim() === confirmPw.trim();
 
   return (
     <View style={s.root}>
@@ -149,15 +149,11 @@ export function LoginScreen() {
         {/* Card */}
         <View style={s.card}>
           <View style={s.tabRow}>
-            <Pressable
-              onPress={() => switchMode('new')}
-              style={[s.tab, mode === 'new' && s.tabActive]}>
+            <Pressable onPress={() => switchMode('new')} style={[s.tab, mode === 'new' && s.tabActive]}>
               <Text style={[s.tabText, mode === 'new' && s.tabTextActive]}>New Member</Text>
             </Pressable>
-            <Pressable
-              onPress={() => switchMode('returning')}
-              style={[s.tab, mode === 'returning' && s.tabActive]}>
-              <Text style={[s.tabText, mode === 'returning' && s.tabTextActive]}>Returning</Text>
+            <Pressable onPress={() => switchMode('returning')} style={[s.tab, mode === 'returning' && s.tabActive]}>
+              <Text style={[s.tabText, mode === 'returning' && s.tabTextActive]}>Sign In</Text>
             </Pressable>
           </View>
 
@@ -165,10 +161,9 @@ export function LoginScreen() {
 
             {mode === 'new' ? (
               <>
-                {/* ── Member ID ── */}
-                <Text style={s.fieldLabel}>CHOOSE A MEMBER ID</Text>
+                {/* Username */}
+                <Text style={s.fieldLabel}>USERNAME</Text>
                 <Text style={s.fieldHint}>Letters, numbers, underscore · 4–20 characters</Text>
-
                 <View style={s.idRow}>
                   <TextInput
                     value={memberId}
@@ -203,28 +198,44 @@ export function LoginScreen() {
                 {available === false && (
                   <View style={s.availRow}>
                     <Ionicons name="close-circle" size={14} color="#F2616B" />
-                    <Text style={s.availErr}>Already taken — try a different ID.</Text>
+                    <Text style={s.availErr}>Already taken — try a different username.</Text>
                   </View>
                 )}
 
-                {/* ── Recovery date ── */}
-                <Text style={[s.fieldLabel, { marginTop: 6 }]}>RECOVERY DATE</Text>
-                <Text style={s.fieldHint}>Your GA clean date — used to verify your identity later</Text>
+                {/* Password */}
+                <Text style={[s.fieldLabel, { marginTop: 6 }]}>PASSWORD</Text>
+                <View style={s.pwRow}>
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Min 6 characters"
+                    placeholderTextColor={AppColors.textMuted}
+                    secureTextEntry={!showPw}
+                    style={[s.input, { flex: 1 }]}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                  />
+                  <Pressable onPress={() => setShowPw(p => !p)} style={s.eyeBtn}>
+                    <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={AppColors.textMuted} />
+                  </Pressable>
+                </View>
+
+                <Text style={[s.fieldLabel, { marginTop: 2 }]}>CONFIRM PASSWORD</Text>
                 <TextInput
-                  value={cleanDate}
-                  onChangeText={setCleanDate}
-                  placeholder="YYYY-MM-DD"
+                  value={confirmPw}
+                  onChangeText={setConfirmPw}
+                  placeholder="Re-enter password"
                   placeholderTextColor={AppColors.textMuted}
-                  keyboardType="numeric"
+                  secureTextEntry={!showPw}
                   style={s.input}
                   autoCorrect={false}
-                  maxLength={10}
+                  autoCapitalize="none"
                 />
               </>
             ) : (
               <>
-                {/* ── Returning ── */}
-                <Text style={s.fieldLabel}>MEMBER ID</Text>
+                {/* Returning */}
+                <Text style={s.fieldLabel}>USERNAME</Text>
                 <TextInput
                   value={memberId}
                   onChangeText={handleMemberIdChange}
@@ -236,19 +247,24 @@ export function LoginScreen() {
                   maxLength={20}
                 />
 
-                <Text style={s.fieldLabel}>RECOVERY DATE</Text>
-                <TextInput
-                  value={cleanDate}
-                  onChangeText={setCleanDate}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={AppColors.textMuted}
-                  keyboardType="numeric"
-                  style={s.input}
-                  autoCorrect={false}
-                  maxLength={10}
-                />
+                <Text style={[s.fieldLabel, { marginTop: 6 }]}>PASSWORD</Text>
+                <View style={s.pwRow}>
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Your password"
+                    placeholderTextColor={AppColors.textMuted}
+                    secureTextEntry={!showPw}
+                    style={[s.input, { flex: 1 }]}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                  />
+                  <Pressable onPress={() => setShowPw(p => !p)} style={s.eyeBtn}>
+                    <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={AppColors.textMuted} />
+                  </Pressable>
+                </View>
                 <Text style={s.returningHint}>
-                  Use the same Member ID and recovery date you created your account with.
+                  If you signed up before passwords were added, use your recovery date (YYYY-MM-DD).
                 </Text>
               </>
             )}
@@ -263,7 +279,7 @@ export function LoginScreen() {
           </View>
         </View>
 
-        {/* CTA button */}
+        {/* CTA */}
         <View style={s.bottom}>
           <Pressable
             onPress={mode === 'new' ? handleCreate : handleSignIn}
@@ -334,6 +350,12 @@ const s = StyleSheet.create({
   availRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -2 },
   availOk:  { color: AppColors.meetings, fontSize: 12, fontWeight: '600' },
   availErr: { color: '#F2616B', fontSize: 12 },
+
+  pwRow: { flexDirection: 'row', alignItems: 'center', gap: 0 },
+  eyeBtn: {
+    position: 'absolute', right: 12,
+    height: 46, justifyContent: 'center', zIndex: 1,
+  },
 
   input: {
     height: 46, backgroundColor: AppColors.screen,

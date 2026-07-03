@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fetchProfile, updateCleanDate, updateHandle, updatePersonalInfo } from '@/api/profile';
+import { fetchProfile, updateCleanDate, updateHandle, updatePersonalInfo, updateRecoveryPhrase } from '@/api/profile';
 import { useDrawer } from '@/context/drawer';
 import { DatePickerInput } from '@/components/date-picker-input';
 import { DesertBackdrop } from '@/components/desert-backdrop';
@@ -11,16 +11,20 @@ import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 import { supabase } from '@/lib/supabase';
 
+function localDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function daysClean(dateStr: string | null): number | null {
   if (!dateStr) return null;
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const diff = Date.now() - localDate(dateStr).getTime();
   return Math.max(0, Math.floor(diff / 86400000));
 }
 
 function formatDateDisplay(dateStr: string | null): string {
   if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  return localDate(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
 // ── row used inside cards ────────────────────────────────────────
@@ -91,6 +95,15 @@ export default function ProfileScreen() {
     }
   }
 
+  // recovery password
+  const [editingPassword, setEditingPassword]       = useState(false);
+  const [savingPassword, setSavingPassword]         = useState(false);
+  const [newPhrase, setNewPhrase]                   = useState('');
+  const [confirmPhrase, setConfirmPhrase]           = useState('');
+  const [phraseError, setPhraseError]               = useState<string | null>(null);
+  const [showPhrase, setShowPhrase]                 = useState(false);
+  const [savedRecoveryPhrase, setSavedRecoveryPhrase] = useState<string | null>(null);
+
   // personal info
   const [editingInfo, setEditingInfo] = useState(false);
   const [savingInfo, setSavingInfo] = useState(false);
@@ -118,6 +131,7 @@ export default function ProfileScreen() {
       setFirstName(info.firstName); setLastName(info.lastName);
       setCity(info.city); setBio(info.bio); setCleanDate(info.cleanDate);
       setSavedInfo(info);
+      setSavedRecoveryPhrase(data?.recovery_phrase ?? null);
     });
   }, [user]);
 
@@ -151,6 +165,38 @@ export default function ProfileScreen() {
     setFirstName(savedInfo.firstName); setLastName(savedInfo.lastName);
     setCity(savedInfo.city); setBio(savedInfo.bio); setCleanDate(savedInfo.cleanDate);
     setEditingInfo(false);
+  }
+
+  async function savePassword() {
+    if (newPhrase.trim().length < 6) {
+      setPhraseError('Password must be at least 6 characters.');
+      return;
+    }
+    if (newPhrase !== confirmPhrase) {
+      setPhraseError('Passwords do not match.');
+      return;
+    }
+    if (!user) return;
+    setSavingPassword(true);
+    setPhraseError(null);
+    try {
+      await updateRecoveryPhrase(user.id, newPhrase.trim());
+      setSavedRecoveryPhrase(newPhrase.trim());
+      setNewPhrase('');
+      setConfirmPhrase('');
+      setEditingPassword(false);
+    } catch {
+      setPhraseError('Could not save password. Try again.');
+    } finally {
+      setSavingPassword(false);
+    }
+  }
+
+  function cancelPassword() {
+    setNewPhrase('');
+    setConfirmPhrase('');
+    setPhraseError(null);
+    setEditingPassword(false);
   }
 
   async function confirmSignOut() {
@@ -291,6 +337,88 @@ export default function ProfileScreen() {
             <InfoRow label="City"       value={city}      editing={editingInfo} placeholder="Enter your city"             onChangeText={setCity} />
             <View style={styles.divider} />
             <InfoRow label="About Me"   value={bio}       editing={editingInfo} placeholder="A few words about yourself…" onChangeText={setBio} multiline />
+          </View>
+
+          {/* ── Recovery Password ── */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={[styles.iconBadge, { backgroundColor: '#A78BFA22' }]}>
+                  <Ionicons name="key" size={22} color="#A78BFA" />
+                </View>
+                <View style={{ gap: 2 }}>
+                  <Text style={styles.sectionTitle}>Password</Text>
+                  <Text style={{ color: AppColors.textMuted, fontSize: 11 }}>Your login password</Text>
+                </View>
+              </View>
+              {!editingPassword && (
+                <Pressable onPress={() => setEditingPassword(true)} style={styles.editBtn}>
+                  <Ionicons name="pencil" size={13} color={AppColors.accent} />
+                  <Text style={styles.editBtnText}>{savedRecoveryPhrase ? 'Change' : 'Set'}</Text>
+                </Pressable>
+              )}
+            </View>
+
+            <View style={styles.divider} />
+
+            {!editingPassword ? (
+              <View style={row.wrap}>
+                <Text style={row.label}>Password</Text>
+                {savedRecoveryPhrase ? (
+                  <Pressable onPress={() => setShowPhrase(p => !p)}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={row.value}>
+                      {showPhrase ? savedRecoveryPhrase : '••••••••'}
+                    </Text>
+                    <Ionicons name={showPhrase ? 'eye-off-outline' : 'eye-outline'} size={16} color={AppColors.textMuted} />
+                  </Pressable>
+                ) : (
+                  <Text style={{ color: AppColors.textMuted, fontSize: 14 }}>
+                    Not set — your recovery date is used
+                  </Text>
+                )}
+              </View>
+            ) : (
+              <View style={{ width: '100%', gap: 10 }}>
+                <TextInput
+                  value={newPhrase}
+                  onChangeText={setNewPhrase}
+                  placeholder="New password (min 6 characters)"
+                  placeholderTextColor={AppColors.textMuted}
+                  secureTextEntry
+                  style={row.input}
+                  autoFocus
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                />
+                <TextInput
+                  value={confirmPhrase}
+                  onChangeText={setConfirmPhrase}
+                  placeholder="Confirm new password"
+                  placeholderTextColor={AppColors.textMuted}
+                  secureTextEntry
+                  style={row.input}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                />
+                {phraseError && (
+                  <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                    <Ionicons name="alert-circle" size={14} color="#F2616B" />
+                    <Text style={{ color: '#F2616B', fontSize: 12, flex: 1 }}>{phraseError}</Text>
+                  </View>
+                )}
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Pressable onPress={cancelPassword}
+                    style={[styles.dateBtn, { backgroundColor: AppColors.screen, borderWidth: 1, borderColor: AppColors.hairline }]}>
+                    <Text style={[styles.dateBtnText, { color: AppColors.textMuted }]}>Cancel</Text>
+                  </Pressable>
+                  <Pressable onPress={savePassword} disabled={savingPassword}
+                    style={[styles.dateBtn, { flex: 1, backgroundColor: AppColors.accent }]}>
+                    <Text style={styles.dateBtnText}>{savingPassword ? 'Saving…' : 'Save Password'}</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* ── Sign out ── */}

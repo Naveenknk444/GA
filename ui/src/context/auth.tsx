@@ -8,14 +8,14 @@ type AuthCtx = {
   shortId: string | null;
   loading: boolean;
   checkMemberIdAvailable: (memberId: string) => Promise<boolean>;
-  signIn: (memberId: string, cleanDate: string) => Promise<void>;
-  signInWithMemberId: (memberId: string, cleanDate: string) => Promise<void>;
+  signIn: (memberId: string, password: string) => Promise<void>;
+  signInWithMemberId: (memberId: string, password: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthCtx>({
   user: null, shortId: null, loading: true,
   checkMemberIdAvailable: async () => true,
-  signIn: async () => {},
+  signIn:             async () => {},
   signInWithMemberId: async () => {},
 });
 
@@ -42,36 +42,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return (count ?? 1) === 0;
   }
 
-  async function signIn(memberId: string, cleanDate: string) {
+  // New member signup — username + password only
+  async function signIn(memberId: string, password: string) {
     const id = memberId.toLowerCase().trim();
 
-    // Step 1: create anonymous session
     const { data, error } = await supabase.auth.signInAnonymously();
     if (error) throw error;
     if (!data.user) throw new Error('Account creation failed');
 
-    // Step 2: link email+password so the user can recover on a new device.
-    // Requires "Confirm email" to be DISABLED in Supabase → Authentication → Email settings.
     const { error: linkErr } = await supabase.auth.updateUser({
       email: `${id}@recovery.ga`,
-      password: cleanDate,
+      password,
     });
     if (linkErr) throw linkErr;
 
-    // Step 3: save member_id and clean_date in profile
     await supabase.from('profiles').upsert(
-      { id: data.user.id, handle: id, member_id: id, clean_date: cleanDate },
+      { id: data.user.id, handle: id, member_id: id, recovery_phrase: password },
       { onConflict: 'id' },
     );
 
     setUser(data.user);
   }
 
-  async function signInWithMemberId(memberId: string, cleanDate: string) {
+  // Returning member — sign in with username + password
+  async function signInWithMemberId(memberId: string, password: string) {
     const id = memberId.toLowerCase().trim();
     const { data, error } = await supabase.auth.signInWithPassword({
       email: `${id}@recovery.ga`,
-      password: cleanDate,
+      password,
     });
     if (error) throw error;
     if (data.user) setUser(data.user);

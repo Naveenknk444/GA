@@ -65,3 +65,13 @@ export async function updateCleanDate(userId: string, date: string): Promise<voi
     .eq('id', userId);
   if (error) throw error;
 }
+
+export async function updateRecoveryPhrase(userId: string, phrase: string): Promise<void> {
+  const { error: authErr } = await supabase.auth.updateUser({ password: phrase.trim() });
+  if (authErr) throw authErr;
+  const { error } = await supabase
+    .from('profiles')
+    .update({ recovery_phrase: phrase.trim() || null })
+    .eq('id', userId);
+  if (error) throw error;
+}
