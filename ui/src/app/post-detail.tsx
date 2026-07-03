@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { addComment, fetchPostById, type CommentRow, type PostDetail } from '@/api/posts';
+import { addComment, fetchPostById, reportPost, type CommentRow, type PostDetail } from '@/api/posts';
 import { DesertBackdrop } from '@/components/desert-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
@@ -37,6 +37,7 @@ export default function PostDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -49,6 +50,31 @@ export default function PostDetailScreen() {
       setLoading(false);
     });
   }, [id]);
+
+  function handleReport() {
+    if (!post || !user) return;
+    Alert.alert(
+      'Report Post',
+      'Report this post as inappropriate content?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Report', style: 'destructive',
+          onPress: async () => {
+            setReporting(true);
+            try {
+              await reportPost(post.id, user.id);
+              Alert.alert('Reported', 'Thank you. Our team will review this post.');
+            } catch {
+              Alert.alert('Error', 'Could not submit report. Please try again.');
+            } finally {
+              setReporting(false);
+            }
+          },
+        },
+      ],
+    );
+  }
 
   async function handleSendReply() {
     if (!reply.trim() || !user || !id) return;
@@ -92,11 +118,16 @@ export default function PostDetailScreen() {
           <Pressable onPress={() => router.back()} hitSlop={10}>
             <Ionicons name="chevron-back" size={26} color={AppColors.text} />
           </Pressable>
-          <Pressable
-            hitSlop={10}
-            onPress={() => post && Share.share({ title: post.title, message: post.body })}>
-            <Ionicons name="share-outline" size={22} color={AppColors.text} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 18, alignItems: 'center' }}>
+            <Pressable hitSlop={10} onPress={handleReport} disabled={reporting}>
+              <Ionicons name="flag-outline" size={20} color={AppColors.textMuted} />
+            </Pressable>
+            <Pressable
+              hitSlop={10}
+              onPress={() => post && Share.share({ title: post.title, message: post.body })}>
+              <Ionicons name="share-outline" size={22} color={AppColors.text} />
+            </Pressable>
+          </View>
         </View>
 
         <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>

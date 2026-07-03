@@ -14,16 +14,16 @@ import { useAuth } from '@/context/auth';
 const ACCENT = AppColors.share; // amber/gold — financial tool
 
 // ── income types + helpers ───────────────────────────────────────────────────
-type IncomeRow = { source: string; per_week: string; monthly: string };
+type IncomeRow = { _id?: string; source: string; per_week: string; monthly: string };
 
 const DEFAULT_INCOME: IncomeRow[] = [
-  { source: 'Wages – Member',          per_week: '', monthly: '' },
-  { source: 'Wages – Spouse/Partner',  per_week: '', monthly: '' },
-  { source: 'Overtime / Bonus',        per_week: '', monthly: '' },
-  { source: 'Part-time / Side work',   per_week: '', monthly: '' },
-  { source: 'Social Security',         per_week: '', monthly: '' },
-  { source: 'Pension / Retirement',    per_week: '', monthly: '' },
-  { source: 'Other',                   per_week: '', monthly: '' },
+  { _id: 'inc-0', source: 'Wages – Member',          per_week: '', monthly: '' },
+  { _id: 'inc-1', source: 'Wages – Spouse/Partner',  per_week: '', monthly: '' },
+  { _id: 'inc-2', source: 'Overtime / Bonus',        per_week: '', monthly: '' },
+  { _id: 'inc-3', source: 'Part-time / Side work',   per_week: '', monthly: '' },
+  { _id: 'inc-4', source: 'Social Security',         per_week: '', monthly: '' },
+  { _id: 'inc-5', source: 'Pension / Retirement',    per_week: '', monthly: '' },
+  { _id: 'inc-6', source: 'Other',                   per_week: '', monthly: '' },
 ];
 
 function toMonthly(perWeek: string): string {
@@ -63,7 +63,7 @@ function mergeExpenses(defaults: ExpenseRow[], saved: ExpenseRow[]): ExpenseRow[
 
 // ── creditor types + data ───────────────────────────────────────────────────
 type CreditorRow = {
-  type: string; creditor: string;
+  _id?: string; type: string; creditor: string;
   balance: string; monthly_payment: string; interest_rate: string;
 };
 
@@ -118,7 +118,7 @@ function IncomeSection({
   }
 
   function addRow() {
-    onChange([...rows, { source: '', per_week: '', monthly: '' }]);
+    onChange([...rows, { _id: `inc-new-${rows.length}-${Date.now()}`, source: '', per_week: '', monthly: '' }]);
   }
 
   function removeRow(i: number) {
@@ -138,7 +138,7 @@ function IncomeSection({
       </View>
 
       {rows.map((r, i) => (
-        <View key={i}>
+        <View key={r._id ?? String(i)}>
           {i > 0 && <View style={s.divider} />}
           <View style={s.incomeEntry}>
             <View style={s.incomeSourceRow}>
@@ -491,7 +491,7 @@ function CreditorSection({
   }
 
   function addRow() {
-    onChange([...rows, { type: '', creditor: '', balance: '', monthly_payment: '', interest_rate: '' }]);
+    onChange([...rows, { _id: `cred-new-${rows.length}-${Date.now()}`, type: '', creditor: '', balance: '', monthly_payment: '', interest_rate: '' }]);
   }
 
   function removeRow(index: number) {
@@ -519,7 +519,7 @@ function CreditorSection({
         </View>
       ) : (
         rows.map((row, i) => (
-          <View key={i}>
+          <View key={row._id ?? String(i)}>
             {i > 0 && <View style={s.divider} />}
             <CreditorEntry
               row={row}
@@ -604,14 +604,13 @@ export default function PressureReliefScreen() {
         other_attendees:   otherAttendees.trim() || null,
         visible_to_sponsor: visibleToSponsor,
         income,
-        total_income_monthly: income.reduce((sum, r) => sum + (parseFloat(r.monthly) || 0), 0) || null,
+        total_income_monthly: income.reduce((sum, r) => sum + (parseFloat(r.monthly) || 0), 0),
         expenses,
-        total_expenses_monthly: expenses.reduce((sum, r) => sum + (parseFloat(r.monthly) || 0), 0) || null,
+        total_expenses_monthly: expenses.reduce((sum, r) => sum + (parseFloat(r.monthly) || 0), 0),
         creditors,
-        available_for_debt: (
+        available_for_debt:
           income.reduce((sum, r)   => sum + (parseFloat(r.monthly) || 0), 0) -
-          expenses.reduce((sum, r) => sum + (parseFloat(r.monthly) || 0), 0)
-        ) || null,
+          expenses.reduce((sum, r) => sum + (parseFloat(r.monthly) || 0), 0),
       });
       if (result && !meetingId) setMeetingId(result.id);
       setSaved(true);

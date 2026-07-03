@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
 import {
   ActivityIndicator, Linking, Modal, Pressable,
   ScrollView, StyleSheet, Text, View,
@@ -88,8 +89,8 @@ function Day1Checklist({
     { key: 'tell',      label: 'Tell one person you trust',   sublabel: 'Share your decision',    auto: false, action: null },
     { key: 'rec_date',  label: 'Set your recovery date',      sublabel: 'Set in Profile tab',     auto: true,  done: !!profile?.clean_date },
     { key: 'quiz',      label: 'Complete the 20 Questions',   sublabel: 'See the quiz below',     auto: true,  done: quizDone },
-    { key: 'gamban',    label: 'Install Gamban',              sublabel: 'Block gambling sites',   auto: false, action: () => Linking.openURL('https://gamban.com') },
-    { key: 'how_ga',    label: "Read 'How GA Works'",         sublabel: 'GA official guide',      auto: false, action: () => Linking.openURL('https://www.gamblersanonymous.org/ga/content/unity-program') },
+    { key: 'gamban',    label: 'Install Gamban',              sublabel: 'Third-party paid app · blocks gambling sites', auto: false, action: () => WebBrowser.openBrowserAsync('https://gamban.com') },
+    { key: 'how_ga',    label: "Read 'How GA Works'",         sublabel: 'GA official guide',      auto: false, action: () => WebBrowser.openBrowserAsync('https://www.gamblersanonymous.org/ga/content/unity-program') },
   ];
 
   function toggle(key: string) {
@@ -312,7 +313,7 @@ function MaterialTab({ resources }: { resources: Resource[] }) {
             <View style={{ gap: 10, marginTop: 10 }}>
               {items.map(r => (
                 <Pressable key={r.id}
-                  onPress={() => r.url && Linking.openURL(r.url)}
+                  onPress={() => r.url && WebBrowser.openBrowserAsync(r.url)}
                   style={({ pressed }) => [s.resourceCard, pressed && { opacity: 0.7 }]}>
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={s.resourceTitle}>{r.title}</Text>
@@ -321,11 +322,45 @@ function MaterialTab({ resources }: { resources: Resource[] }) {
                   <Ionicons name="open-outline" size={18} color={AppColors.textMuted} />
                 </Pressable>
               ))}
+              {cat === 'gamban' && (
+                <Text style={s.disclosure}>
+                  Gamban is an independent third-party service. Subscription fees may apply. Recovery Community is not affiliated with Gamban and receives no compensation.
+                </Text>
+              )}
             </View>
           </View>
         );
       })}
     </ScrollView>
+  );
+}
+
+// ─── Achievement row (module-scope to avoid remount on parent re-render) ─────
+function AchRow({
+  a, onSelfReport,
+}: { a: AchievementWithStatus; onSelfReport: (a: AchievementWithStatus) => void }) {
+  return (
+    <View style={[s.achRow, !a.earned && s.achRowLocked]}>
+      <View style={[s.achIcon, { backgroundColor: a.earned ? a.color + '22' : AppColors.tile }]}>
+        <Ionicons name={a.icon as any} size={22} color={a.earned ? a.color : AppColors.textMuted} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[s.achTitle, !a.earned && s.achTitleLocked]}>{a.title}</Text>
+        <Text style={s.achDesc}>{a.description}</Text>
+        {a.earned && a.earned_at && (
+          <Text style={[s.achDate, { color: a.color }]}>Earned {earnedDate(a.earned_at)}</Text>
+        )}
+      </View>
+      {a.earned ? (
+        <Ionicons name="checkmark-circle" size={22} color={a.color} />
+      ) : a.type === 'self_reported' ? (
+        <Pressable onPress={() => onSelfReport(a)} style={[s.markBtn, { borderColor: a.color }]}>
+          <Text style={[s.markBtnText, { color: a.color }]}>Mark Done</Text>
+        </Pressable>
+      ) : (
+        <Ionicons name="lock-closed-outline" size={18} color={AppColors.textMuted} />
+      )}
+    </View>
   );
 }
 
@@ -336,44 +371,18 @@ function AchievementsTab({
   const milestones = achievements.filter(a => a.category === 'milestone');
   const activities = achievements.filter(a => a.category === 'activity');
 
-  function AchRow({ a }: { a: AchievementWithStatus }) {
-    return (
-      <View style={[s.achRow, !a.earned && s.achRowLocked]}>
-        <View style={[s.achIcon, { backgroundColor: a.earned ? a.color + '22' : AppColors.tile }]}>
-          <Ionicons name={a.icon as any} size={22} color={a.earned ? a.color : AppColors.textMuted} />
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[s.achTitle, !a.earned && s.achTitleLocked]}>{a.title}</Text>
-          <Text style={s.achDesc}>{a.description}</Text>
-          {a.earned && a.earned_at && (
-            <Text style={[s.achDate, { color: a.color }]}>Earned {earnedDate(a.earned_at)}</Text>
-          )}
-        </View>
-        {a.earned ? (
-          <Ionicons name="checkmark-circle" size={22} color={a.color} />
-        ) : a.type === 'self_reported' ? (
-          <Pressable onPress={() => onSelfReport(a)} style={[s.markBtn, { borderColor: a.color }]}>
-            <Text style={[s.markBtnText, { color: a.color }]}>Mark Done</Text>
-          </Pressable>
-        ) : (
-          <Ionicons name="lock-closed-outline" size={18} color={AppColors.textMuted} />
-        )}
-      </View>
-    );
-  }
-
   return (
     <ScrollView contentContainerStyle={{ gap: 20, paddingBottom: 24 }}>
       <View>
         <Text style={s.sectionLabel}>Clean Time Milestones</Text>
         <View style={{ gap: 10, marginTop: 10 }}>
-          {milestones.map(a => <AchRow key={a.key} a={a} />)}
+          {milestones.map(a => <AchRow key={a.key} a={a} onSelfReport={onSelfReport} />)}
         </View>
       </View>
       <View>
         <Text style={s.sectionLabel}>Activity Badges</Text>
         <View style={{ gap: 10, marginTop: 10 }}>
-          {activities.map(a => <AchRow key={a.key} a={a} />)}
+          {activities.map(a => <AchRow key={a.key} a={a} onSelfReport={onSelfReport} />)}
         </View>
       </View>
     </ScrollView>
@@ -654,6 +663,7 @@ const s = StyleSheet.create({
   resourceCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: AppColors.tile, borderWidth: 1, borderColor: AppColors.tileBorder, borderRadius: 14, padding: 14 },
   resourceTitle: { color: AppColors.text, fontSize: 14, fontWeight: '600' },
   resourceSub: { color: AppColors.textMuted, fontSize: 12, lineHeight: 17 },
+  disclosure: { color: AppColors.textMuted, fontSize: 11, lineHeight: 16, fontStyle: 'italic', paddingHorizontal: 4 },
 
   achRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: AppColors.tile, borderWidth: 1, borderColor: AppColors.tileBorder, borderRadius: 14, padding: 14 },
   achRowLocked: { opacity: 0.55 },

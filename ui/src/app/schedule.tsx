@@ -48,6 +48,12 @@ function durationHrs(start: string, end: string): number {
   return (toMins(end) - toMins(start)) / 60;
 }
 
+function isValidTime(t: string): boolean {
+  if (!/^\d{2}:\d{2}$/.test(t)) return false;
+  const [h, m] = t.split(':').map(Number);
+  return h < 24 && m < 60;
+}
+
 // ── Block detail / edit modal ────────────────────────────────────────────────
 function BlockModal({
   block, date, userId, onClose, onSaved, onDeleted,
@@ -77,6 +83,14 @@ function BlockModal({
 
   async function handleSave() {
     if (!task.trim()) return;
+    if (!isValidTime(startTime) || !isValidTime(endTime)) {
+      Alert.alert('Invalid time', 'Use HH:MM format (e.g. 09:00, 14:30)');
+      return;
+    }
+    if (startTime >= endTime) {
+      Alert.alert('Invalid time', 'End time must be after start time');
+      return;
+    }
     setSaving(true);
     try {
       const draft: BlockDraft = {
@@ -95,16 +109,12 @@ function BlockModal({
       } else {
         const b = await updateBlock(block!.id, draft);
         if (!b) return;
-        const log = await upsertLog(userId, b.id, date, { completed, reflection: reflection.trim() || null, notes: notes.trim() || null });
-        saved = { ...b, log };
-      }
-
-      if (!isNew) {
-        await upsertLog(userId, block!.id, date, {
+        const log = await upsertLog(userId, b.id, date, {
           completed,
           reflection: reflection.trim() || null,
           notes: notes.trim() || null,
         });
+        saved = { ...b, log };
       }
 
       onSaved(saved);
@@ -121,8 +131,12 @@ function BlockModal({
         text: 'Delete', style: 'destructive',
         onPress: async () => {
           setDeleting(true);
-          await deleteBlock(block.id);
-          onDeleted(block.id);
+          try {
+            await deleteBlock(block.id);
+            onDeleted(block.id);
+          } finally {
+            setDeleting(false);
+          }
         },
       },
     ]);

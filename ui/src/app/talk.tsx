@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fetchPosts, type PostSummary } from '@/api/posts';
+import { fetchPosts, reportPost, type PostSummary } from '@/api/posts';
 import { DesertBackdrop } from '@/components/desert-backdrop';
 import { AppColors } from '@/constants/appTheme';
+import { useAuth } from '@/context/auth';
 import { useDrawer } from '@/context/drawer';
 
 const FILTERS = ['All', 'Discussion', 'Support', 'Milestones'] as const;
@@ -32,9 +33,33 @@ function timeAgo(dateStr: string): string {
 export default function TalkScreen() {
   const router = useRouter();
   const { open } = useDrawer();
+  const { user } = useAuth();
   const [active, setActive] = useState<(typeof FILTERS)[number]>('All');
   const [posts, setPosts] = useState<PostSummary[]>([]);
   const [loading, setLoading] = useState(true);
+
+  function handleReportMenu(postId: string) {
+    Alert.alert(
+      'Post Options',
+      undefined,
+      [
+        {
+          text: 'Report Post',
+          style: 'destructive',
+          onPress: async () => {
+            if (!user) return;
+            try {
+              await reportPost(postId, user.id);
+              Alert.alert('Reported', 'Thank you. Our team will review this post.');
+            } catch {
+              Alert.alert('Error', 'Could not submit report. Please try again.');
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  }
 
   useEffect(() => {
     fetchPosts()
@@ -111,9 +136,16 @@ export default function TalkScreen() {
                   onPress={() => router.push({ pathname: '/post-detail', params: { id: post.id } })}
                   style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}>
 
-                  {/* category badge */}
-                  <View style={[styles.badge, { backgroundColor: meta.color + '22' }]}>
-                    <Text style={[styles.badgeText, { color: meta.color }]}>{meta.label}</Text>
+                  {/* top row: category badge + report menu */}
+                  <View style={styles.cardTop}>
+                    <View style={[styles.badge, { backgroundColor: meta.color + '22' }]}>
+                      <Text style={[styles.badgeText, { color: meta.color }]}>{meta.label}</Text>
+                    </View>
+                    <Pressable
+                      hitSlop={10}
+                      onPress={() => handleReportMenu(post.id)}>
+                      <Ionicons name="ellipsis-horizontal" size={18} color={AppColors.textMuted} />
+                    </Pressable>
                   </View>
 
                   <Text style={styles.cardTitle}>{post.title}</Text>
@@ -173,6 +205,7 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 8,
   },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   badgeText: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   cardTitle: { color: AppColors.text, fontSize: 16, fontWeight: '600' },

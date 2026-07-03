@@ -7,12 +7,14 @@ type AuthCtx = {
   user: User | null;
   shortId: string | null;
   loading: boolean;
-  signIn: () => Promise<void>;
-  signInWithMemberId: (shortId: string, password: string) => Promise<void>;
+  checkMemberIdAvailable: (memberId: string) => Promise<boolean>;
+  signIn: (memberId: string, cleanDate: string) => Promise<void>;
+  signInWithMemberId: (memberId: string, cleanDate: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthCtx>({
   user: null, shortId: null, loading: true,
+  checkMemberIdAvailable: async () => true,
   signIn: async () => {},
   signInWithMemberId: async () => {},
 });
@@ -22,36 +24,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for an existing session (returning user).
-    // If none, stay on the login screen — don't auto-sign-in.
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
-  async function signIn() {
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error) throw error;   // bubble up so the login screen can show the message
-    if (data.user) {
-      await supabase.from('profiles').upsert(
-        { id: data.user.id, handle: 'Member ' + data.user.id.slice(0, 8) },
-        { onConflict: 'id', ignoreDuplicates: true }
-      );
-      setUser(data.user);
-    }
+  async function checkMemberIdAvailable(memberId: string): Promise<boolean> {
+    const { count } = await supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('member_id', memberId.toLowerCase().trim());
+    return (count ?? 1) === 0;
   }
 
-  async function signInWithMemberId(shortId: string, password: string) {
-    // We store credentials as shortId@recovery.ga — no real email involved.
-    const email = `${shortId.trim().toLowerCase()}@recovery.ga`;
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  async function signIn(memberId: string, cleanDate: string) {
+    const id = memberId.toLowerCase().trim();
+
+    // Step 1: create anonymous session
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error) throw error;
+    if (!data.user) throw new Error('Account creation failed');
+
+    // Step 2: link email+password so the user can recover on a new device.
+    // Requires "Confirm email" to be DISABLED in Supabase → Authentication → Email settings.
+    const { error: linkErr } = await supabase.auth.updateUser({
+      email: `${id}@recovery.ga`,
+      password: cleanDate,
+    });
+    if (linkErr) throw linkErr;
+
+    // Step 3: save member_id and clean_date in profile
+    await supabase.from('profiles').upsert(
+      { id: data.user.id, handle: id, member_id: id, clean_date: cleanDate },
+      { onConflict: 'id' },
+    );
+
+    setUser(data.user);
+  }
+
+  async function signInWithMemberId(memberId: string, cleanDate: string) {
+    const id = memberId.toLowerCase().trim();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: `${id}@recovery.ga`,
+      password: cleanDate,
+    });
     if (error) throw error;
     if (data.user) setUser(data.user);
   }
@@ -59,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const shortId = user?.id.slice(0, 8) ?? null;
 
   return (
-    <AuthContext.Provider value={{ user, shortId, loading, signIn, signInWithMemberId }}>
+    <AuthContext.Provider value={{ user, shortId, loading, checkMemberIdAvailable, signIn, signInWithMemberId }}>
       {children}
     </AuthContext.Provider>
   );

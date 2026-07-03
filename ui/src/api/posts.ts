@@ -53,6 +53,7 @@ export async function fetchPostById(
   ]);
 
   if (postRes.error || !postRes.data) return null;
+  if (commentsRes.error) throw commentsRes.error;
   return {
     post: postRes.data as unknown as PostDetail,
     comments: (commentsRes.data ?? []) as unknown as CommentRow[],
@@ -75,5 +76,15 @@ export async function createPost(
   const { error } = await supabase
     .from('posts')
     .insert({ author_id: authorId, category, title, body });
+  if (error) throw error;
+}
+
+export async function reportPost(postId: string, reporterId: string): Promise<void> {
+  const { error } = await supabase
+    .from('reports')
+    .upsert(
+      { post_id: postId, reporter_id: reporterId, reason: 'inappropriate' },
+      { onConflict: 'post_id,reporter_id', ignoreDuplicates: true },
+    );
   if (error) throw error;
 }

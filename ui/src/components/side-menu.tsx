@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -148,7 +149,7 @@ export function SideMenu() {
         <View style={s.divider} />
 
         {/* ── About ── */}
-        <Pressable onPress={() => Linking.openURL('https://www.gamblersanonymous.org')}
+        <Pressable onPress={() => WebBrowser.openBrowserAsync('https://www.gamblersanonymous.org')}
           style={({ pressed }) => [s.navItem, pressed && { opacity: 0.7 }]}>
           <Ionicons name="information-circle-outline" size={20} color={AppColors.textMuted} />
           <Text style={[s.navLabel, { color: AppColors.textMuted }]}>About GA</Text>
