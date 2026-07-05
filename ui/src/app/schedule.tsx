@@ -228,32 +228,6 @@ function BlockModal({
             <Text style={m.fieldErr}>End time must be after start time</Text>
           )}
 
-          {/* Priority */}
-          <Text style={m.label}>PRIORITY</Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {PRIORITIES.map(p => (
-              <Pressable key={p} onPress={() => setPriority(p)}
-                style={[m.chip, { flex: 1, justifyContent: 'center' },
-                  priority === p && { backgroundColor: priorityColor[p] + '33', borderColor: priorityColor[p] }]}>
-                <Text style={[m.chipText, { textAlign: 'center', textTransform: 'capitalize' },
-                  priority === p && { color: priorityColor[p], fontWeight: '700' }]}>{p}</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {/* Energy */}
-          <Text style={m.label}>ENERGY NEEDED</Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {ENERGIES.map(e => (
-              <Pressable key={e} onPress={() => setEnergy(energy === e ? null : e)}
-                style={[m.chip, { flex: 1, justifyContent: 'center' },
-                  energy === e && { backgroundColor: energyColor[e] + '33', borderColor: energyColor[e] }]}>
-                <Text style={[m.chipText, { textAlign: 'center', textTransform: 'capitalize' },
-                  energy === e && { color: energyColor[e], fontWeight: '700' }]}>{e}</Text>
-              </Pressable>
-            ))}
-          </View>
-
           {/* Location */}
           <Text style={m.label}>LOCATION</Text>
           <TextInput value={location} onChangeText={setLocation}
