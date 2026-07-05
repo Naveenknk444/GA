@@ -116,11 +116,20 @@ export function LoginScreen() {
     setAvailable(null);
   }
 
+  const pw = password.trim();
+  const cpw = confirmPw.trim();
+
+  const pwRules = [
+    { label: 'At least 6 characters', met: pw.length >= 6 },
+    { label: 'Contains a letter',      met: /[a-zA-Z]/.test(pw) },
+    { label: 'Contains a number',      met: /[0-9]/.test(pw) },
+    { label: 'Passwords match',        met: pw.length > 0 && pw === cpw },
+  ];
+
   const canCreate =
     MEMBER_ID_RE.test(memberId.trim()) &&
     available === true &&
-    password.trim().length >= 6 &&
-    password.trim() === confirmPw.trim();
+    pwRules.every(r => r.met);
 
   return (
     <View style={s.root}>
@@ -227,19 +236,6 @@ export function LoginScreen() {
                     <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={AppColors.textMuted} />
                   </Pressable>
                 </View>
-                {password.length > 0 && (
-                  <View style={s.validRow}>
-                    <Ionicons
-                      name={password.trim().length >= 6 ? 'checkmark-circle' : 'close-circle'}
-                      size={14}
-                      color={password.trim().length >= 6 ? AppColors.meetings : '#F2616B'}
-                    />
-                    <Text style={[s.validText, { color: password.trim().length >= 6 ? AppColors.meetings : '#F2616B' }]}>
-                      At least 6 characters
-                    </Text>
-                  </View>
-                )}
-
                 <Text style={[s.fieldLabel, { marginTop: 6 }]}>CONFIRM PASSWORD</Text>
                 <TextInput
                   value={confirmPw}
@@ -251,16 +247,23 @@ export function LoginScreen() {
                   autoCorrect={false}
                   autoCapitalize="none"
                 />
-                {confirmPw.length > 0 && (
-                  <View style={s.validRow}>
-                    <Ionicons
-                      name={password.trim() === confirmPw.trim() ? 'checkmark-circle' : 'close-circle'}
-                      size={14}
-                      color={password.trim() === confirmPw.trim() ? AppColors.meetings : '#F2616B'}
-                    />
-                    <Text style={[s.validText, { color: password.trim() === confirmPw.trim() ? AppColors.meetings : '#F2616B' }]}>
-                      {password.trim() === confirmPw.trim() ? 'Passwords match' : 'Passwords do not match'}
-                    </Text>
+
+                {/* Password requirements checklist */}
+                {password.length > 0 && (
+                  <View style={s.rulesBox}>
+                    <Text style={s.rulesTitle}>PASSWORD REQUIREMENTS</Text>
+                    {pwRules.map(rule => (
+                      <View key={rule.label} style={s.validRow}>
+                        <Ionicons
+                          name={rule.met ? 'checkmark-circle' : 'ellipse-outline'}
+                          size={14}
+                          color={rule.met ? AppColors.meetings : AppColors.textMuted}
+                        />
+                        <Text style={[s.validText, { color: rule.met ? AppColors.meetings : AppColors.textMuted }]}>
+                          {rule.label}
+                        </Text>
+                      </View>
+                    ))}
                   </View>
                 )}
               </>
@@ -392,7 +395,21 @@ const s = StyleSheet.create({
   availRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -2 },
   availOk:  { color: AppColors.meetings, fontSize: 12, fontWeight: '600' },
   availErr: { color: '#F2616B', fontSize: 12 },
-  validRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  rulesBox: {
+    marginTop: 10,
+    backgroundColor: AppColors.screen,
+    borderRadius: 10,
+    padding: 12,
+    gap: 6,
+  },
+  rulesTitle: {
+    color: AppColors.textMuted,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    marginBottom: 2,
+  },
+  validRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   validText: { fontSize: 12 },
 
   pwRow: { flexDirection: 'row', alignItems: 'center', gap: 0 },
