@@ -43,9 +43,15 @@ function fmt(t: string): string {
   return `${hr}:${String(m).padStart(2,'0')} ${ampm}`;
 }
 
-function durationHrs(start: string, end: string): number {
-  const toMins = (t: string) => { const [h,m] = t.split(':').map(Number); return h*60+m; };
-  return (toMins(end) - toMins(start)) / 60;
+function durationLabel(start: string, end: string): string {
+  const toMins = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  const mins = toMins(end) - toMins(start);
+  if (mins <= 0) return '';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
 }
 
 function isValidTime(t: string): boolean {
@@ -386,7 +392,7 @@ export default function ScheduleScreen() {
             )}
             {blocks.map(block => {
               const color = block.color ?? defaultColor(block.task);
-              const hrs   = durationHrs(block.start_time, block.end_time);
+              const dur   = durationLabel(block.start_time, block.end_time);
               const done  = block.log?.completed ?? false;
               const priorityColor = { low: '#9AA4B2', medium: AppColors.share, high: '#F97316' };
               return (
@@ -404,7 +410,7 @@ export default function ScheduleScreen() {
                     <View style={s.blockMeta}>
                       <Ionicons name="time-outline" size={13} color={AppColors.textMuted} />
                       <Text style={s.blockMetaText}>
-                        {fmt(block.start_time)} – {fmt(block.end_time)} · {hrs}h
+                        {fmt(block.start_time)} – {fmt(block.end_time)}{dur ? ` · ${dur}` : ''}
                       </Text>
                     </View>
 

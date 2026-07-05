@@ -121,7 +121,7 @@ export default function TalkScreen() {
                 ) : (
                   <>
                     <Text style={styles.emptyText}>Nothing here</Text>
-                    <Text style={styles.emptyHint}>No posts in this category yet</Text>
+                    <Text style={styles.emptyHint}>No {active === 'All' ? '' : active.toLowerCase() + ' '}posts yet</Text>
                   </>
                 )}
               </View>
