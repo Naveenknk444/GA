@@ -140,6 +140,7 @@ function GamblingTypeSelector({
   selected, onSave, saving,
 }: { selected: string[]; onSave: (t: string[]) => void; saving: boolean }) {
   const [local, setLocal] = useState<string[]>(selected);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => { setLocal(selected); }, [selected.join(',')]);
 
@@ -151,26 +152,48 @@ function GamblingTypeSelector({
 
   return (
     <View style={s.card}>
-      <Text style={s.cardTitle}>Your Gambling Type</Text>
-      <Text style={s.cardSub}>Select all that apply to you.</Text>
-      <View style={s.chipWrap}>
-        {GAMBLING_TYPES.map(t => {
-          const on = local.includes(t);
-          return (
-            <Pressable key={t} onPress={() => toggle(t)}
-              style={[s.chip, on && s.chipOn]}>
-              <Text style={[s.chipText, on && s.chipTextOn]}>{t}</Text>
+      <Pressable style={s.collapsibleHeader} onPress={() => setExpanded(e => !e)}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.cardTitle}>Your Gambling Type</Text>
+          {!expanded && selected.length > 0 && (
+            <Text style={s.cardSub} numberOfLines={1}>
+              {selected.join(' · ')}
+            </Text>
+          )}
+          {!expanded && selected.length === 0 && (
+            <Text style={s.cardSub}>Tap to select</Text>
+          )}
+        </View>
+        <Ionicons
+          name={expanded ? 'remove' : 'add'}
+          size={22}
+          color={AppColors.textMuted}
+        />
+      </Pressable>
+
+      {expanded && (
+        <>
+          <Text style={s.cardSub}>Select all that apply to you.</Text>
+          <View style={s.chipWrap}>
+            {GAMBLING_TYPES.map(t => {
+              const on = local.includes(t);
+              return (
+                <Pressable key={t} onPress={() => toggle(t)}
+                  style={[s.chip, on && s.chipOn]}>
+                  <Text style={[s.chipText, on && s.chipTextOn]}>{t}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {changed && (
+            <Pressable onPress={() => onSave(local)} disabled={saving}
+              style={[s.saveBtn, saving && { opacity: 0.5 }]}>
+              {saving
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={s.saveBtnText}>Save Selection</Text>}
             </Pressable>
-          );
-        })}
-      </View>
-      {changed && (
-        <Pressable onPress={() => onSave(local)} disabled={saving}
-          style={[s.saveBtn, saving && { opacity: 0.5 }]}>
-          {saving
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={s.saveBtnText}>Save Selection</Text>}
-        </Pressable>
+          )}
+        </>
       )}
     </View>
   );
@@ -622,6 +645,7 @@ const s = StyleSheet.create({
   card: { backgroundColor: AppColors.tile, borderWidth: 1, borderColor: AppColors.tileBorder, borderRadius: 16, padding: 16, gap: 12 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardTitle: { color: AppColors.text, fontSize: 16, fontWeight: '700' },
+  collapsibleHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   cardSub: { color: AppColors.textMuted, fontSize: 13, lineHeight: 19 },
   cardBadge: { color: AppColors.accent, fontSize: 13, fontWeight: '600' },
 
