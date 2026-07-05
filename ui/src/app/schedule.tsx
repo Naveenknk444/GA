@@ -86,17 +86,13 @@ function BlockModal({
   const [notes,      setNotes]      = useState(block?.log?.notes ?? '');
   const [saving,     setSaving]     = useState(false);
   const [deleting,   setDeleting]   = useState(false);
+  const [taskTouched, setTaskTouched] = useState(false);
 
   async function handleSave() {
+    setTaskTouched(true);
     if (!task.trim()) return;
-    if (!isValidTime(startTime) || !isValidTime(endTime)) {
-      Alert.alert('Invalid time', 'Use HH:MM format (e.g. 09:00, 14:30)');
-      return;
-    }
-    if (startTime >= endTime) {
-      Alert.alert('Invalid time', 'End time must be after start time');
-      return;
-    }
+    if (!isValidTime(startTime) || !isValidTime(endTime)) return;
+    if (startTime >= endTime) return;
     setSaving(true);
     try {
       const draft: BlockDraft = {
@@ -179,11 +175,17 @@ function BlockModal({
           {/* Task name */}
           <Text style={m.label}>TASK</Text>
           <TextInput
-            value={task} onChangeText={setTask}
+            value={task}
+            onChangeText={setTask}
+            onBlur={() => setTaskTouched(true)}
             placeholder="e.g. Gym, GA, Work…"
             placeholderTextColor={AppColors.textMuted}
-            style={m.input} autoCorrect={false}
+            style={[m.input, taskTouched && !task.trim() && m.inputErr]}
+            autoCorrect={false}
           />
+          {taskTouched && !task.trim() && (
+            <Text style={m.fieldErr}>Task name is required</Text>
+          )}
 
           {/* Day */}
           <Text style={m.label}>DAY</Text>
@@ -197,20 +199,34 @@ function BlockModal({
           </ScrollView>
 
           {/* Times */}
+          <Text style={m.timeHint}>24-hour format · e.g. 09:00 or 14:30</Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={m.label}>START TIME</Text>
               <TextInput value={startTime} onChangeText={setStartTime}
                 placeholder="09:00" placeholderTextColor={AppColors.textMuted}
-                style={m.input} autoCorrect={false} />
+                keyboardType="numbers-and-punctuation"
+                style={[m.input, startTime.length > 0 && !isValidTime(startTime) && m.inputErr]}
+                autoCorrect={false} />
+              {startTime.length > 0 && !isValidTime(startTime) && (
+                <Text style={m.fieldErr}>Use HH:MM (e.g. 09:00)</Text>
+              )}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={m.label}>END TIME</Text>
               <TextInput value={endTime} onChangeText={setEndTime}
                 placeholder="10:00" placeholderTextColor={AppColors.textMuted}
-                style={m.input} autoCorrect={false} />
+                keyboardType="numbers-and-punctuation"
+                style={[m.input, endTime.length > 0 && !isValidTime(endTime) && m.inputErr]}
+                autoCorrect={false} />
+              {endTime.length > 0 && !isValidTime(endTime) && (
+                <Text style={m.fieldErr}>Use HH:MM (e.g. 10:00)</Text>
+              )}
             </View>
           </View>
+          {isValidTime(startTime) && isValidTime(endTime) && startTime >= endTime && (
+            <Text style={m.fieldErr}>End time must be after start time</Text>
+          )}
 
           {/* Priority */}
           <Text style={m.label}>PRIORITY</Text>
@@ -559,6 +575,9 @@ const m = StyleSheet.create({
     color: AppColors.text, fontSize: 15,
     outlineStyle: 'none' as any,
   },
+  inputErr: { borderColor: '#F2616B' },
+  fieldErr: { color: '#F2616B', fontSize: 12, marginTop: 4 },
+  timeHint: { color: AppColors.textMuted, fontSize: 11, marginBottom: -8 },
   multiline: { minHeight: 90, textAlignVertical: 'top', paddingTop: 12 },
 
   chip: {
