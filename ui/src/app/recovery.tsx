@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  earnAchievement, fetchAchievementsWithStatus,
+  earnAchievement, fetchAchievementsWithStatus, milestoneDate,
   syncAutoAchievements, type AchievementWithStatus,
 } from '@/api/achievements';
 import { fetchProfile, updateGamblingTypes, updateQuizScore } from '@/api/profile';
@@ -67,6 +67,16 @@ const SELF_REPORT_COPY: Record<string, string> = {
   first_meeting:    'Attending your first GA meeting is a huge step. Well done for showing up.',
   installed_gamban: 'Blocking gambling sites takes real commitment. This is a powerful choice.',
   self_excluded:    'Self-exclusion is one of the strongest tools in your recovery. Be proud.',
+};
+
+// Maps achievement keys that are tied to clean-date milestones → days after clean date
+const CLEAN_DATE_MILESTONE_DAYS: Record<string, number> = {
+  '1_day_clean':    1,
+  '1_week_clean':   7,
+  '1_month_clean':  30,
+  '3_months_clean': 90,
+  '6_months_clean': 180,
+  '1_year_clean':   365,
 };
 
 function earnedDate(str: string) {
@@ -545,7 +555,11 @@ export default function RecoveryScreen() {
 
   async function handleConfirmSelfReport() {
     if (!user || !confirming) return;
-    await earnAchievement(user.id, confirming.key);
+    const days = CLEAN_DATE_MILESTONE_DAYS[confirming.key];
+    const earnedAt = days !== undefined && profile?.clean_date
+      ? milestoneDate(profile.clean_date, days)
+      : undefined;
+    await earnAchievement(user.id, confirming.key, earnedAt);
     const updated = await fetchAchievementsWithStatus(user.id);
     setAchievements(updated);
     const earned = updated.find(a => a.key === confirming!.key);

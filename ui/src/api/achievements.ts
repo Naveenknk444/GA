@@ -42,7 +42,7 @@ function localDateFromStr(dateStr: string): Date {
 }
 
 // Returns the ISO date string N days after the clean date
-function milestoneDate(cleanDate: string, daysAfter: number): string {
+export function milestoneDate(cleanDate: string, daysAfter: number): string {
   const [y, m, d] = cleanDate.split('-').map(Number);
   const dt = new Date(y, m - 1, d + daysAfter);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
