@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchProfile, updateCleanDate, updateHandle, updatePersonalInfo, updateRecoveryPhrase } from '@/api/profile';
@@ -220,6 +220,7 @@ export default function ProfileScreen() {
   return (
     <View style={styles.root}>
       <DesertBackdrop variant="band" height={180} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.headerRow}>
           <Pressable onPress={open} hitSlop={10}>
@@ -429,6 +430,7 @@ export default function ProfileScreen() {
 
         </ScrollView>
       </SafeAreaView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

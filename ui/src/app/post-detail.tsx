@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { addComment, fetchPostById, reportPost, type CommentRow, type PostDetail } from '@/api/posts';
@@ -113,6 +113,7 @@ export default function PostDetailScreen() {
     <View style={styles.root}>
       <DesertBackdrop variant="band" height={180} />
 
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} hitSlop={10}>
@@ -205,6 +206,7 @@ export default function PostDetailScreen() {
           </Pressable>
         </View>
       </SafeAreaView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Modal, Pressable, ScrollView,
-  StyleSheet, Switch, Text, TextInput, View,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform,
+  Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -155,6 +155,7 @@ function BlockModal({
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <View style={m.overlay}>
         <Pressable style={m.backdrop} onPress={onClose} />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
         <View style={m.sheet}>
 
           {/* drag handle */}
@@ -293,6 +294,7 @@ function BlockModal({
 
         </ScrollView>
         </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );

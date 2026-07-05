@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View,
+  KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet,
+  Switch, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -622,6 +623,7 @@ export default function PressureReliefScreen() {
 
   return (
     <View style={s.root}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
 
         {/* ── Header ── */}
@@ -784,6 +786,7 @@ export default function PressureReliefScreen() {
 
         </ScrollView>
       </SafeAreaView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
