@@ -227,8 +227,20 @@ export function LoginScreen() {
                     <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={18} color={AppColors.textMuted} />
                   </Pressable>
                 </View>
+                {password.length > 0 && (
+                  <View style={s.validRow}>
+                    <Ionicons
+                      name={password.trim().length >= 6 ? 'checkmark-circle' : 'close-circle'}
+                      size={14}
+                      color={password.trim().length >= 6 ? AppColors.meetings : '#F2616B'}
+                    />
+                    <Text style={[s.validText, { color: password.trim().length >= 6 ? AppColors.meetings : '#F2616B' }]}>
+                      At least 6 characters
+                    </Text>
+                  </View>
+                )}
 
-                <Text style={[s.fieldLabel, { marginTop: 2 }]}>CONFIRM PASSWORD</Text>
+                <Text style={[s.fieldLabel, { marginTop: 6 }]}>CONFIRM PASSWORD</Text>
                 <TextInput
                   value={confirmPw}
                   onChangeText={setConfirmPw}
@@ -239,6 +251,18 @@ export function LoginScreen() {
                   autoCorrect={false}
                   autoCapitalize="none"
                 />
+                {confirmPw.length > 0 && (
+                  <View style={s.validRow}>
+                    <Ionicons
+                      name={password.trim() === confirmPw.trim() ? 'checkmark-circle' : 'close-circle'}
+                      size={14}
+                      color={password.trim() === confirmPw.trim() ? AppColors.meetings : '#F2616B'}
+                    />
+                    <Text style={[s.validText, { color: password.trim() === confirmPw.trim() ? AppColors.meetings : '#F2616B' }]}>
+                      {password.trim() === confirmPw.trim() ? 'Passwords match' : 'Passwords do not match'}
+                    </Text>
+                  </View>
+                )}
               </>
             ) : (
               <>
@@ -368,6 +392,8 @@ const s = StyleSheet.create({
   availRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -2 },
   availOk:  { color: AppColors.meetings, fontSize: 12, fontWeight: '600' },
   availErr: { color: '#F2616B', fontSize: 12 },
+  validRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  validText: { fontSize: 12 },
 
   pwRow: { flexDirection: 'row', alignItems: 'center', gap: 0 },
   eyeBtn: {
