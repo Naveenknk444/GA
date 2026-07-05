@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
-  ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable,
+  ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -125,7 +126,14 @@ export function LoginScreen() {
     <View style={s.root}>
       <DesertBackdrop variant="full" />
 
-      <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={s.kav}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+          <ScrollView
+            contentContainerStyle={s.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
 
         {/* Logo */}
         <View style={s.logoBlock}>
@@ -293,14 +301,24 @@ export function LoginScreen() {
           </Pressable>
         </View>
 
-      </SafeAreaView>
+          </ScrollView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: AppColors.screen },
-  safe: { flex: 1, paddingHorizontal: 24, justifyContent: 'space-between', paddingVertical: 20 },
+  kav:  { flex: 1 },
+  safe: { flex: 1 },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 32,
+    justifyContent: 'space-between',
+  },
 
   logoBlock: { alignItems: 'center', gap: 10, marginTop: 30 },
   triangle: {
