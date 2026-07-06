@@ -71,12 +71,14 @@ const SELF_REPORT_COPY: Record<string, string> = {
 
 // Maps achievement keys that are tied to clean-date milestones → days after clean date
 const CLEAN_DATE_MILESTONE_DAYS: Record<string, number> = {
-  '1_day_clean':    1,
-  '1_week_clean':   7,
-  '1_month_clean':  30,
-  '3_months_clean': 90,
-  '6_months_clean': 180,
-  '1_year_clean':   365,
+  '1_day_clean':     1,
+  '1_week_clean':    7,
+  '1_month_clean':   30,
+  '2_months_clean':  60,
+  '3_months_clean':  90,
+  '6_months_clean':  180,
+  '1_year_clean':    365,
+  '18_months_clean': 540,
 };
 
 function earnedDate(str: string) {
