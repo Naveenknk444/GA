@@ -156,6 +156,26 @@ export function SideMenu() {
 
         <View style={s.divider} />
 
+        <Pressable
+          onPress={() => navigate('/telephone-list')}
+          style={({ pressed }) => [
+            s.navItem,
+            isActive('/telephone-list') && s.navItemActive,
+            pressed && { opacity: 0.7 },
+          ]}>
+          {isActive('/telephone-list') && <View style={s.activeBorder} />}
+          <Ionicons
+            name={isActive('/telephone-list') ? 'call' : 'call-outline'}
+            size={20}
+            color={isActive('/telephone-list') ? AppColors.accent : AppColors.text}
+          />
+          <Text style={[s.navLabel, isActive('/telephone-list') && { color: AppColors.accent, fontWeight: '700' }]}>
+            Telephone List
+          </Text>
+        </Pressable>
+
+        <View style={s.divider} />
+
         {/* ── GA Hotline ── */}
         <Pressable onPress={() => Linking.openURL('tel:18005224700')}
           style={({ pressed }) => [s.navItem, pressed && { opacity: 0.7 }]}>

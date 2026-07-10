@@ -605,6 +605,20 @@ export default function RecoveryScreen() {
         {/* tab content */}
         {tab === 'start' && (
           <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 24 }}>
+            {/* Telephone list shortcut */}
+            <Pressable
+              onPress={() => router.push('/telephone-list')}
+              style={({ pressed }) => [s.card, s.phoneCard, pressed && { opacity: 0.75 }]}>
+              <View style={s.phoneIcon}>
+                <Ionicons name="call" size={22} color={AppColors.meetings} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={s.cardTitle}>Telephone List</Text>
+                <Text style={s.cardSub}>Call a member · use the telephone list</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={AppColors.textMuted} />
+            </Pressable>
+
             <Day1Checklist
               profile={profile}
               achievements={achievements}
@@ -659,6 +673,8 @@ const s = StyleSheet.create({
   tabLabelActive: { color: '#fff', fontWeight: '700' },
 
   card: { backgroundColor: AppColors.tile, borderWidth: 1, borderColor: AppColors.tileBorder, borderRadius: 16, padding: 16, gap: 12 },
+  phoneCard: { flexDirection: 'row', alignItems: 'center', borderColor: AppColors.meetings + '40' },
+  phoneIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: AppColors.meetings + '20', alignItems: 'center', justifyContent: 'center' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardTitle: { color: AppColors.text, fontSize: 16, fontWeight: '700' },
   collapsibleHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
