@@ -136,6 +136,26 @@ export function SideMenu() {
 
         <View style={s.divider} />
 
+        <Pressable
+          onPress={() => navigate('/daily-reading')}
+          style={({ pressed }) => [
+            s.navItem,
+            isActive('/daily-reading') && s.navItemActive,
+            pressed && { opacity: 0.7 },
+          ]}>
+          {isActive('/daily-reading') && <View style={s.activeBorder} />}
+          <Ionicons
+            name={isActive('/daily-reading') ? 'book' : 'book-outline'}
+            size={20}
+            color={isActive('/daily-reading') ? AppColors.accent : AppColors.text}
+          />
+          <Text style={[s.navLabel, isActive('/daily-reading') && { color: AppColors.accent, fontWeight: '700' }]}>
+            Daily Reading
+          </Text>
+        </Pressable>
+
+        <View style={s.divider} />
+
         {/* ── GA Hotline ── */}
         <Pressable onPress={() => Linking.openURL('tel:18005224700')}
           style={({ pressed }) => [s.navItem, pressed && { opacity: 0.7 }]}>

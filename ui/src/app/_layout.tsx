@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/context/auth';
 import { DrawerProvider, DRAWER_WIDTH, useDrawer } from '@/context/drawer';
 import { LoginScreen } from '@/components/login-screen';
 import { SideMenu } from '@/components/side-menu';
+import { DailyReadingModal } from '@/components/daily-reading-modal';
 import { AppColors } from '@/constants/appTheme';
 
 const isWeb = Platform.OS === 'web';
@@ -46,6 +48,7 @@ function DrawerLayout() {
 
 function AppGate() {
   const { user, loading } = useAuth();
+  const [showDailyReading, setShowDailyReading] = useState(true);
 
   if (loading) {
     return (
@@ -59,9 +62,12 @@ function AppGate() {
     return <LoginScreen />;
   }
 
+  const now = new Date();
+
   return (
-    <Tabs
-      screenOptions={{
+    <>
+      <Tabs
+        screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: AppColors.accent,
         tabBarInactiveTintColor: AppColors.textMuted,
@@ -127,8 +133,20 @@ function AppGate() {
       <Tabs.Screen name="post-detail" options={{ href: null }} />
       <Tabs.Screen name="pressure-relief" options={{ href: null }} />
       <Tabs.Screen name="schedule" options={{ href: null }} />
+      <Tabs.Screen name="daily-reading" options={{ href: null }} />
       <Tabs.Screen name="db-schema" options={{ href: null }} />
     </Tabs>
+
+      {showDailyReading && (
+        <DailyReadingModal
+          year={now.getFullYear()}
+          month={now.getMonth() + 1}
+          day={now.getDate()}
+          userId={user.id}
+          onClose={() => setShowDailyReading(false)}
+        />
+      )}
+    </>
   );
 }
 
