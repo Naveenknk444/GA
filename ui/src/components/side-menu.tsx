@@ -97,6 +97,25 @@ export function SideMenu() {
         {/* ── Tools ── */}
         <Text style={s.sectionLabel}>TOOLS</Text>
         <Pressable
+          onPress={() => navigate('/checklist')}
+          style={({ pressed }) => [
+            s.navItem,
+            isActive('/checklist') && s.navItemActive,
+            pressed && { opacity: 0.7 },
+          ]}>
+          {isActive('/checklist') && <View style={s.activeBorder} />}
+          <Ionicons
+            name={isActive('/checklist') ? 'checkbox' : 'checkbox-outline'}
+            size={20}
+            color={isActive('/checklist') ? AppColors.accent : AppColors.text}
+          />
+          <Text style={[s.navLabel, isActive('/checklist') && { color: AppColors.accent, fontWeight: '700' }]}>
+            Daily Checklist
+          </Text>
+        </Pressable>
+
+        <View style={s.divider} />
+        <Pressable
           onPress={() => navigate('/pressure-relief')}
           style={({ pressed }) => [
             s.navItem,

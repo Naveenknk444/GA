@@ -9,6 +9,7 @@ import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 import { useDrawer } from '@/context/drawer';
 import { fetchDayBlocks, todayDate, todayName, type BlockWithLog } from '@/api/schedule';
+import { fetchCheckins, DAILY_TASKS } from '@/api/checklist';
 
 const TILES = [
   { key: 'talk',     label: 'Talk',     icon: 'chatbubbles', color: AppColors.talk,     route: '/talk' },
@@ -42,10 +43,12 @@ export default function HomeScreen() {
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [fading, setFading] = useState(false);
   const [todayBlocks, setTodayBlocks] = useState<BlockWithLog[]>([]);
+  const [dailyDone, setDailyDone] = useState(0);
 
   useEffect(() => {
     if (!user) return;
     fetchDayBlocks(user.id, todayName(), todayDate()).then(setTodayBlocks);
+    fetchCheckins(user.id).then(s => setDailyDone(DAILY_TASKS.filter(t => s.daily.has(t.key)).length));
   }, [user]);
 
   // Rotate quotes every 6 seconds.
@@ -129,6 +132,20 @@ export default function HomeScreen() {
                   {todayBlocks.filter(b => !b.log?.completed).length} remaining today
                 </Text>
               )}
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={AppColors.textMuted} />
+          </Pressable>
+
+          {/* 6th tile — daily checklist */}
+          <Pressable
+            style={({ pressed }) => [styles.tile, styles.tileFull, pressed && styles.tilePressed]}
+            onPress={() => router.push('/checklist')}>
+            <View style={[styles.iconBadge, { backgroundColor: AppColors.meetings + '22' }]}>
+              <Ionicons name="checkbox-outline" size={26} color={AppColors.meetings} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.tileLabel}>Daily Checklist</Text>
+              <Text style={styles.tileSub}>{dailyDone} of {DAILY_TASKS.length} done today</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={AppColors.textMuted} />
           </Pressable>
