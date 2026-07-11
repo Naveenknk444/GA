@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchProfile, updateCleanDate, updateHandle, updatePersonalInfo, updateRecoveryPhrase } from '@/api/profile';
@@ -10,6 +10,10 @@ import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 import { supabase } from '@/lib/supabase';
+import {
+  isBiometricSupported, isBiometricEnabled, getBiometricLabel,
+  enableBiometric, disableBiometric,
+} from '@/lib/biometrics';
 
 function localDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -112,6 +116,12 @@ export default function ProfileScreen() {
   const [city, setCity] = useState('');
   const [bio, setBio] = useState('');
   const [cleanDate, setCleanDate] = useState('');   // YYYY-MM-DD
+  // biometrics
+  const [bioSupported, setBioSupported] = useState(false);
+  const [bioEnabled,   setBioEnabled]   = useState(false);
+  const [bioLabel,     setBioLabel]     = useState('Face ID');
+  const [bioLoading,   setBioLoading]   = useState(false);
+
   const [savedInfo, setSavedInfo] = useState({
     firstName: '', lastName: '', city: '', bio: '', cleanDate: '',
   });
@@ -133,6 +143,14 @@ export default function ProfileScreen() {
       setSavedInfo(info);
       setSavedRecoveryPhrase(data?.recovery_phrase ?? null);
     });
+
+    // load biometric state
+    Promise.all([isBiometricSupported(), isBiometricEnabled(), getBiometricLabel()])
+      .then(([supported, enabled, label]) => {
+        setBioSupported(supported);
+        setBioEnabled(enabled);
+        setBioLabel(label);
+      });
   }, [user]);
 
   async function saveHandle() {
@@ -197,6 +215,21 @@ export default function ProfileScreen() {
     setConfirmPhrase('');
     setPhraseError(null);
     setEditingPassword(false);
+  }
+
+  async function toggleBiometric() {
+    setBioLoading(true);
+    try {
+      if (bioEnabled) {
+        await disableBiometric();
+        setBioEnabled(false);
+      } else {
+        const success = await enableBiometric();
+        if (success) setBioEnabled(true);
+      }
+    } finally {
+      setBioLoading(false);
+    }
   }
 
   async function confirmSignOut() {
@@ -422,6 +455,37 @@ export default function ProfileScreen() {
             )}
           </View>
 
+          {/* ── Security ── */}
+          {bioSupported && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Security</Text>
+              <View style={styles.bioRow}>
+                <View style={styles.bioRowLeft}>
+                  <Ionicons
+                    name={bioEnabled ? 'scan' : 'scan-outline'}
+                    size={22}
+                    color={bioEnabled ? AppColors.meetings : AppColors.textMuted}
+                  />
+                  <View style={{ gap: 2 }}>
+                    <Text style={styles.bioLabel}>{bioLabel} Login</Text>
+                    <Text style={styles.bioHint}>
+                      {bioEnabled ? 'Tap to disable' : 'Sign in faster with biometrics'}
+                    </Text>
+                  </View>
+                </View>
+                <Pressable
+                  onPress={toggleBiometric}
+                  disabled={bioLoading}
+                  style={[styles.bioToggle, bioEnabled && styles.bioToggleOn]}
+                >
+                  {bioLoading
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Text style={styles.bioToggleText}>{bioEnabled ? 'On' : 'Off'}</Text>}
+                </Pressable>
+              </View>
+            </View>
+          )}
+
           {/* ── Sign out ── */}
           <Pressable onPress={confirmSignOut} style={styles.signOutBtn}>
             <Ionicons name="log-out-outline" size={18} color="#F2616B" />
@@ -490,6 +554,30 @@ const styles = StyleSheet.create({
   editBtnText: { color: AppColors.accent, fontSize: 13, fontWeight: '500' },
 
   divider: { height: 1, backgroundColor: AppColors.hairline, width: '100%' },
+
+  section: {
+    backgroundColor: AppColors.tile,
+    borderWidth: 1, borderColor: AppColors.tileBorder,
+    borderRadius: 16, padding: 16, gap: 12,
+  },
+
+  bioRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  bioRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  bioLabel:   { color: AppColors.text, fontSize: 15, fontWeight: '500' },
+  bioHint:    { color: AppColors.textMuted, fontSize: 12 },
+  bioToggle: {
+    paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: AppColors.screen,
+    borderWidth: 1, borderColor: AppColors.tileBorder,
+    minWidth: 52, alignItems: 'center',
+  },
+  bioToggleOn: {
+    backgroundColor: AppColors.meetings,
+    borderColor: AppColors.meetings,
+  },
+  bioToggleText: { color: AppColors.text, fontSize: 13, fontWeight: '700' },
 
   signOutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

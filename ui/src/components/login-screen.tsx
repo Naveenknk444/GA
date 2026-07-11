@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform, Pressable,
   ScrollView, StyleSheet, Text, TextInput, View,
@@ -9,6 +9,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DesertBackdrop } from '@/components/desert-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
+import {
+  isBiometricSupported, isBiometricEnabled, getBiometricLabel,
+  saveCredentials, authenticateAndGetCredentials,
+} from '@/lib/biometrics';
 
 type Mode = 'new' | 'returning';
 
@@ -21,14 +25,31 @@ export function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [memberId, setMemberId]   = useState('');
-  const [password, setPassword]   = useState('');
-  const [confirmPw, setConfirmPw]   = useState('');
-  const [showPw, setShowPw]         = useState(false);
+  const [memberId,  setMemberId]  = useState('');
+  const [password,  setPassword]  = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [showPw,    setShowPw]    = useState(false);
 
   // New member only
   const [checking,  setChecking]  = useState(false);
   const [available, setAvailable] = useState<boolean | null>(null);
+
+  // Biometrics
+  const [bioReady,   setBioReady]   = useState(false);
+  const [bioLabel,   setBioLabel]   = useState('Face ID');
+  const [bioLoading, setBioLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const [supported, enabled, label] = await Promise.all([
+        isBiometricSupported(),
+        isBiometricEnabled(),
+        getBiometricLabel(),
+      ]);
+      setBioReady(supported && enabled);
+      setBioLabel(label);
+    })();
+  }, []);
 
   function handleMemberIdChange(v: string) {
     setMemberId(v.replace(/[^a-zA-Z0-9_]/g, ''));
@@ -75,6 +96,7 @@ export function LoginScreen() {
     setError(null);
     try {
       await signIn(id, pw);
+      await saveCredentials(id, pw);
     } catch (e: any) {
       const msg: string = e?.message ?? '';
       if (msg.includes('already registered') || msg.includes('unique')) {
@@ -100,10 +122,28 @@ export function LoginScreen() {
     setError(null);
     try {
       await signInWithMemberId(id, pw);
+      await saveCredentials(id, pw);
     } catch {
       setError('Username or password is incorrect.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleBiometricSignIn() {
+    setBioLoading(true);
+    setError(null);
+    try {
+      const creds = await authenticateAndGetCredentials();
+      if (!creds) {
+        // User cancelled — no error shown
+        return;
+      }
+      await signInWithMemberId(creds.username, creds.password);
+    } catch {
+      setError('Biometric sign-in failed. Use your password instead.');
+    } finally {
+      setBioLoading(false);
     }
   }
 
@@ -318,14 +358,31 @@ export function LoginScreen() {
         <View style={s.bottom}>
           <Pressable
             onPress={mode === 'new' ? handleCreate : handleSignIn}
-            disabled={loading || (mode === 'new' && !canCreate)}
-            style={[s.btn, (loading || (mode === 'new' && !canCreate)) && s.btnDisabled]}>
+            disabled={loading || bioLoading || (mode === 'new' && !canCreate)}
+            style={[s.btn, (loading || bioLoading || (mode === 'new' && !canCreate)) && s.btnDisabled]}>
             {loading
               ? <ActivityIndicator color="#fff" />
               : <Text style={s.btnText}>
                   {mode === 'new' ? 'Create Account' : 'Sign In'}
                 </Text>}
           </Pressable>
+
+          {/* Face ID button — only on Sign In tab, only if enrolled */}
+          {mode === 'returning' && bioReady && (
+            <Pressable
+              onPress={handleBiometricSignIn}
+              disabled={bioLoading || loading}
+              style={[s.bioBtn, (bioLoading || loading) && { opacity: 0.5 }]}
+            >
+              {bioLoading
+                ? <ActivityIndicator size="small" color={AppColors.accent} />
+                : <>
+                    <Ionicons name="scan-outline" size={20} color={AppColors.accent} />
+                    <Text style={s.bioBtnText}>Sign in with {bioLabel}</Text>
+                  </>
+              }
+            </Pressable>
+          )}
         </View>
 
           </ScrollView>
@@ -437,11 +494,20 @@ const s = StyleSheet.create({
   },
   errorText: { color: '#F2616B', fontSize: 12, flex: 1 },
 
-  bottom: { paddingBottom: 4 },
+  bottom: { paddingBottom: 4, gap: 12 },
   btn: {
     height: 54, backgroundColor: AppColors.accent,
     borderRadius: 14, alignItems: 'center', justifyContent: 'center',
   },
   btnDisabled: { opacity: 0.45 },
   btnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+
+  bioBtn: {
+    height: 50,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: AppColors.tile,
+    borderWidth: 1, borderColor: AppColors.accent + '55',
+    borderRadius: 14,
+  },
+  bioBtnText: { color: AppColors.accent, fontSize: 16, fontWeight: '600' },
 });
