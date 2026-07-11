@@ -1,241 +1,280 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DesertBackdrop } from '@/components/desert-backdrop';
+import { HomeBackdrop } from '@/components/home-backdrop';
+import { DailyReadingModal } from '@/components/daily-reading-modal';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 import { useDrawer } from '@/context/drawer';
 import { fetchDayBlocks, todayDate, todayName, type BlockWithLog } from '@/api/schedule';
-import { fetchCheckins, DAILY_TASKS } from '@/api/checklist';
+import { fetchCheckins, fetchChecklistTasks } from '@/api/checklist';
+import { fetchDailyReading, type ReadingContent } from '@/api/daily-reading';
+import { fetchProfile } from '@/api/profile';
 
 const TILES = [
   { key: 'talk',     label: 'Talk',     icon: 'chatbubbles', color: AppColors.talk,     route: '/talk' },
-  { key: 'meetings', label: 'Meetings', icon: 'people',      color: AppColors.meetings, route: '/meetings' },
+  { key: 'meetings', label: 'Meetings', icon: 'calendar',    color: AppColors.meetings, route: '/meetings' },
   { key: 'recovery', label: 'Recovery', icon: 'leaf',        color: AppColors.recovery, route: '/recovery' },
   { key: 'share',    label: 'Share',    icon: 'paper-plane', color: AppColors.share,    route: '/compose' },
 ] as const;
 
-// Authentic GA program phrases and principles.
-const QUOTES = [
-  { text: 'Our primary purpose is to stop gambling and to help other compulsive gamblers do the same.', source: 'GA Preamble' },
-  { text: 'Once a compulsive gambler, always a compulsive gambler — but we never have to gamble again.', source: 'GA Program' },
-  { text: 'Sharing our experience, strength, and hope with each other is what keeps us well.', source: 'GA Fellowship' },
-  { text: 'Recovery is not a destination. It is a way of living, one day at a time.', source: 'GA Principle' },
-  { text: 'Progress, not perfection. Each day without gambling is a victory worth celebrating.', source: 'GA Tradition' },
-  { text: 'We admitted we were powerless over gambling — that our lives had become unmanageable.', source: 'GA Step One' },
-  { text: 'No matter how far down the scale we have gone, we can find others who have been lower.', source: 'GA Literature' },
-  { text: 'Easy does it. First things first. One day at a time.', source: 'GA Slogans' },
-];
-
-function fmt(t: string): string {
-  const [h, m] = t.split(':').map(Number);
-  const ampm = h < 12 ? 'AM' : 'PM';
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+function cleanDaysFrom(dateStr: string | null): number | null {
+  if (!dateStr) return null;
+  const ms = Date.now() - new Date(dateStr).getTime();
+  return ms < 0 ? null : Math.floor(ms / 86_400_000);
 }
 
 export default function HomeScreen() {
-  const router = useRouter();
+  const router   = useRouter();
   const { open } = useDrawer();
   const { user } = useAuth();
-  const [quoteIndex, setQuoteIndex] = useState(0);
-  const [fading, setFading] = useState(false);
+
   const [todayBlocks, setTodayBlocks] = useState<BlockWithLog[]>([]);
-  const [dailyDone, setDailyDone] = useState(0);
+  const [dailyDone,   setDailyDone]   = useState(0);
+  const [dailyTotal,  setDailyTotal]  = useState(0);
+  const [cleanDays,   setCleanDays]   = useState<number | null>(null);
+  const [reading,     setReading]     = useState<ReadingContent | null>(null);
+  const [showReading, setShowReading] = useState(false);
+
+  const now       = new Date();
+  const dateLabel = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
   useEffect(() => {
     if (!user) return;
+    const m = now.getMonth() + 1;
+    const d = now.getDate();
+
     fetchDayBlocks(user.id, todayName(), todayDate()).then(setTodayBlocks);
-    fetchCheckins(user.id).then(s => setDailyDone(DAILY_TASKS.filter(t => s.daily.has(t.key)).length));
+
+    fetchChecklistTasks().then(async g => {
+      setDailyTotal(g.daily.length);
+      const s = await fetchCheckins(user.id, g);
+      setDailyDone(g.daily.filter(t => s.daily.has(t.key)).length);
+    });
+
+    fetchDailyReading(m, d).then(r => { if (r) setReading(r.content); });
+
+    fetchProfile(user.id).then(p => setCleanDays(cleanDaysFrom(p?.clean_date ?? null)));
   }, [user]);
 
-  // Rotate quotes every 6 seconds.
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setFading(true);
-      setTimeout(() => {
-        setQuoteIndex(i => (i + 1) % QUOTES.length);
-        setFading(false);
-      }, 400);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const quote = QUOTES[quoteIndex];
+  const remaining = todayBlocks.filter(b => !b.log?.completed).length;
+  const progress  = dailyTotal > 0 ? dailyDone / dailyTotal : 0;
 
   return (
     <View style={styles.root}>
-      <DesertBackdrop variant="full" />
-
+      <HomeBackdrop />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        {/* Top bar */}
+        {/* Header row */}
         <View style={styles.header}>
           <Pressable onPress={open} hitSlop={10}>
             <Ionicons name="menu" size={26} color={AppColors.text} />
           </Pressable>
-          <View style={{ width: 24 }} />
+          <Text style={styles.dateText}>{dateLabel}</Text>
+          {cleanDays !== null ? (
+            <View style={styles.cleanPill}>
+              <Text style={styles.cleanText}>🌿 {cleanDays}d</Text>
+            </View>
+          ) : (
+            <View style={{ width: 60 }} />
+          )}
         </View>
 
-        {/* Hero — centered logo + rotating quote */}
-        <View style={styles.hero}>
-          <View style={styles.logoRing}>
-            <Ionicons name="triangle-outline" size={36} color={AppColors.accent} />
-          </View>
-          <Text style={styles.title}>Recovery Community</Text>
-          <View style={styles.divider} />
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Today's Reading hero card */}
+          <Pressable
+            style={({ pressed }) => [styles.readingCard, pressed && styles.tilePressed]}
+            onPress={() => setShowReading(true)}
+          >
+            <View style={styles.readingTop}>
+              <Ionicons name="book-outline" size={14} color={AppColors.accent} />
+              <Text style={styles.readingLabel}>Today's Reading</Text>
+            </View>
+            <Text style={styles.readingSnippet} numberOfLines={4}>
+              {reading?.reflection ?? 'Tap to open your daily reflection…'}
+            </Text>
+            <View style={styles.readingCta}>
+              <Text style={styles.readingCtaText}>Open Reading</Text>
+              <Ionicons name="chevron-forward" size={14} color={AppColors.accent} />
+            </View>
+          </Pressable>
 
-          {/* Quote card */}
-          <View style={[styles.quoteCard, fading && styles.quoteFading]}>
-            <Ionicons name="chatbubble-ellipses-outline" size={18} color={AppColors.accent} style={styles.quoteIcon} />
-            <Text style={styles.quoteText}>{quote.text}</Text>
-            <Text style={styles.quoteSource}>— {quote.source}</Text>
-          </View>
-
-          {/* Dot indicators */}
-          <View style={styles.dots}>
-            {QUOTES.map((_, i) => (
-              <View
-                key={i}
-                style={[styles.dot, i === quoteIndex && styles.dotActive]}
-              />
+          {/* 2×2 tile grid */}
+          <View style={styles.grid}>
+            {TILES.map(t => (
+              <Pressable
+                key={t.key}
+                style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
+                onPress={() => router.push(t.route)}
+              >
+                <View style={[styles.iconBadge, { backgroundColor: t.color + '22' }]}>
+                  <Ionicons name={t.icon as any} size={26} color={t.color} />
+                </View>
+                <Text style={styles.tileLabel}>{t.label}</Text>
+              </Pressable>
             ))}
           </View>
-        </View>
 
-        {/* 2×2 tile grid */}
-        <View style={styles.grid}>
-          {TILES.map((t) => (
-            <Pressable
-              key={t.key}
-              style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
-              onPress={() => router.push(t.route)}>
-              <View style={[styles.iconBadge, { backgroundColor: t.color + '22' }]}>
-                <Ionicons name={t.icon as any} size={26} color={t.color} />
+          {/* Combined status card — Schedule + Checklist */}
+          <View style={styles.statusCard}>
+            <Pressable style={styles.statusRow} onPress={() => router.push('/schedule')}>
+              <View style={[styles.iconBadge, { backgroundColor: AppColors.accent + '22' }]}>
+                <Ionicons name="calendar-number" size={22} color={AppColors.accent} />
               </View>
-              <Text style={styles.tileLabel}>{t.label}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.statusTitle}>Schedule</Text>
+                <Text style={styles.statusSub}>{remaining} remaining today</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={AppColors.textMuted} />
             </Pressable>
-          ))}
 
-          {/* 5th tile — full width */}
-          <Pressable
-            style={({ pressed }) => [styles.tile, styles.tileFull, pressed && styles.tilePressed]}
-            onPress={() => router.push('/schedule')}>
-            <View style={[styles.iconBadge, { backgroundColor: AppColors.accent + '22' }]}>
-              <Ionicons name="calendar-number" size={26} color={AppColors.accent} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.tileLabel}>Schedule</Text>
-              {todayBlocks.length > 0 && (
-                <Text style={styles.tileSub} numberOfLines={1}>
-                  {todayBlocks.filter(b => !b.log?.completed).length} remaining today
-                </Text>
-              )}
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={AppColors.textMuted} />
-          </Pressable>
+            <View style={styles.statusDivider} />
 
-          {/* 6th tile — daily checklist */}
-          <Pressable
-            style={({ pressed }) => [styles.tile, styles.tileFull, pressed && styles.tilePressed]}
-            onPress={() => router.push('/checklist')}>
-            <View style={[styles.iconBadge, { backgroundColor: AppColors.meetings + '22' }]}>
-              <Ionicons name="checkbox-outline" size={26} color={AppColors.meetings} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.tileLabel}>Daily Checklist</Text>
-              <Text style={styles.tileSub}>{dailyDone} of {DAILY_TASKS.length} done today</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={AppColors.textMuted} />
-          </Pressable>
-        </View>
+            <Pressable style={styles.statusRow} onPress={() => router.push('/checklist')}>
+              <View style={[styles.iconBadge, { backgroundColor: AppColors.meetings + '22' }]}>
+                <Ionicons name="checkbox-outline" size={22} color={AppColors.meetings} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.statusTitle}>Daily Checklist</Text>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+                </View>
+                <Text style={styles.statusSub}>{dailyDone} of {dailyTotal} done today</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={AppColors.textMuted} />
+            </Pressable>
+          </View>
+        </ScrollView>
       </SafeAreaView>
+
+      {showReading && (
+        <DailyReadingModal
+          year={now.getFullYear()}
+          month={now.getMonth() + 1}
+          day={now.getDate()}
+          userId={user!.id}
+          onClose={() => setShowReading(false)}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AppColors.screen },
-  safe: { flex: 1, paddingHorizontal: 20 },
+  root: { flex: 1 },
+  safe: { flex: 1 },
 
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
     paddingTop: 8,
+    paddingBottom: 10,
   },
-
-  hero: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 4,
-  },
-  logoRing: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: AppColors.accent + '15',
-    borderWidth: 1, borderColor: AppColors.accent + '30',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  title: {
-    color: AppColors.text,
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
+  dateText: {
+    color: AppColors.textMuted,
+    fontSize: 13,
+    fontWeight: '500',
     letterSpacing: 0.3,
   },
-  divider: { width: 36, height: 3, borderRadius: 2, backgroundColor: AppColors.accent },
+  cleanPill: {
+    backgroundColor: 'rgba(59,130,246,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.3)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  cleanText: { color: AppColors.accent, fontSize: 12, fontWeight: '600' },
 
-  quoteCard: {
+  scroll:        { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 24, gap: 16 },
+
+  // Reading hero card
+  readingCard: {
     backgroundColor: AppColors.tile,
-    borderWidth: 1, borderColor: AppColors.tileBorder,
-    borderRadius: 16, padding: 18,
-    gap: 8, width: '100%',
-    opacity: 1,
+    borderWidth: 1,
+    borderColor: AppColors.tileBorder,
+    borderRadius: 18,
+    padding: 18,
+    gap: 10,
   },
-  quoteFading: { opacity: 0 },
-  quoteIcon: { opacity: 0.6 },
-  quoteText: {
+  readingTop:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  readingLabel:   { color: AppColors.accent, fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
+  readingSnippet: {
     color: AppColors.text,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 22,
     fontStyle: 'italic',
-    textAlign: 'center',
   },
-  quoteSource: {
-    color: AppColors.accent,
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
-    letterSpacing: 0.4,
-  },
+  readingCta:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  readingCtaText: { color: AppColors.accent, fontSize: 13, fontWeight: '600' },
 
-  dots: { flexDirection: 'row', gap: 5 },
-  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: AppColors.textMuted },
-  dotActive: { width: 14, backgroundColor: AppColors.accent },
-
+  // 2×2 grid
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingBottom: 16,
   },
   tile: {
-    width: '48%', height: 110,
-    borderRadius: 18, padding: 16,
+    width: '48%',
+    height: 110,
+    borderRadius: 18,
+    padding: 16,
     marginBottom: 14,
     justifyContent: 'space-between',
     backgroundColor: AppColors.tile,
-    borderWidth: 1, borderColor: AppColors.tileBorder,
+    borderWidth: 1,
+    borderColor: AppColors.tileBorder,
   },
   tilePressed: { opacity: 0.7 },
   iconBadge: {
-    width: 50, height: 50, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  tileLabel: { color: AppColors.text, fontSize: 16, fontWeight: '600' },
-  tileFull: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14, height: 72 },
-  tileSub:  { color: AppColors.textMuted, fontSize: 12, marginTop: 2 },
+  tileLabel: { color: AppColors.text, fontSize: 15, fontWeight: '600' },
+
+  // Combined status card
+  statusCard: {
+    backgroundColor: AppColors.tile,
+    borderWidth: 1,
+    borderColor: AppColors.tileBorder,
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+  },
+  statusDivider: {
+    height: 1,
+    backgroundColor: AppColors.tileBorder,
+    marginHorizontal: 16,
+  },
+  statusTitle: { color: AppColors.text, fontSize: 15, fontWeight: '600' },
+  statusSub:   { color: AppColors.textMuted, fontSize: 12, marginTop: 2 },
+  progressTrack: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 2,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 4,
+    backgroundColor: AppColors.meetings,
+    borderRadius: 2,
+  },
 });

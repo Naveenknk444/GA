@@ -9,6 +9,7 @@ import { LoginScreen } from '@/components/login-screen';
 import { SideMenu } from '@/components/side-menu';
 import { DailyReadingModal } from '@/components/daily-reading-modal';
 import { AppColors } from '@/constants/appTheme';
+import { HomeBackdrop } from '@/components/home-backdrop';
 
 const isWeb = Platform.OS === 'web';
 
@@ -17,6 +18,7 @@ export default function RootLayout() {
     <AuthProvider>
       <View style={styles.page}>
         <View style={styles.phone}>
+          <HomeBackdrop />
           <DrawerProvider>
             <DrawerLayout />
           </DrawerProvider>
@@ -72,8 +74,8 @@ function AppGate() {
         tabBarActiveTintColor: AppColors.accent,
         tabBarInactiveTintColor: AppColors.textMuted,
         tabBarStyle: {
-          backgroundColor: AppColors.tabBar,
-          borderTopColor: AppColors.hairline,
+          backgroundColor: 'rgba(1,5,15,0.90)',
+          borderTopColor: 'rgba(255,255,255,0.08)',
           borderTopWidth: 1,
           height: 86,
           paddingTop: 10,
@@ -97,7 +99,7 @@ function AppGate() {
         options={{
           title: 'Talk',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={size} color={color} />
           ),
         }}
       />
@@ -115,7 +117,7 @@ function AppGate() {
         options={{
           title: 'Recovery',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'heart' : 'heart-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'leaf' : 'leaf-outline'} size={size} color={color} />
           ),
         }}
       />
@@ -124,7 +126,7 @@ function AppGate() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'person-circle' : 'person-circle-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
           ),
         }}
       />

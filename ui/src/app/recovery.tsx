@@ -14,7 +14,7 @@ import {
 } from '@/api/achievements';
 import { fetchProfile, updateGamblingTypes, updateQuizScore } from '@/api/profile';
 import { fetchResources, type Resource } from '@/api/resources';
-import { DesertBackdrop } from '@/components/desert-backdrop';
+import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 import { useDrawer } from '@/context/drawer';
@@ -579,7 +579,7 @@ export default function RecoveryScreen() {
 
   return (
     <View style={s.root}>
-      <DesertBackdrop variant="band" height={180} />
+      <HomeBackdrop />
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
         <View style={s.headerRow}>
           <Pressable onPress={open} hitSlop={10}>
@@ -660,8 +660,8 @@ export default function RecoveryScreen() {
 
 // ─── styles ───────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AppColors.screen },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: AppColors.screen },
+  root: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   safe: { flex: 1, paddingHorizontal: 20 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, marginBottom: 14 },
   screenTitle: { color: AppColors.text, fontSize: 24, fontWeight: '700' },

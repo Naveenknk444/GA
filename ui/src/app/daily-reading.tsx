@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 import { fetchReadLog } from '@/api/daily-reading';
@@ -58,7 +59,9 @@ export default function DailyReadingScreen() {
   const grid = buildGrid(viewYear, viewMonth);
 
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+    <View style={{ flex: 1 }}>
+      <HomeBackdrop />
+      <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={s.container} showsVerticalScrollIndicator={false}>
 
         {/* Page header */}
@@ -154,13 +157,14 @@ export default function DailyReadingScreen() {
         />
       )}
     </SafeAreaView>
+    </View>
   );
 }
 
 const CELL = 44;
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: AppColors.screen },
+  safe: { flex: 1 },
   container: { padding: 20, paddingBottom: 40, gap: 16 },
 
   pageHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },

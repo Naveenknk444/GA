@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchLatestMeeting, saveMeeting, type PRGMeeting } from '@/api/pressure-relief';
 import { DatePickerInput } from '@/components/date-picker-input';
+import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 
@@ -623,6 +624,7 @@ export default function PressureReliefScreen() {
 
   return (
     <View style={s.root}>
+      <HomeBackdrop />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
 
@@ -792,7 +794,7 @@ export default function PressureReliefScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AppColors.screen },
+  root: { flex: 1 },
   safe: { flex: 1, paddingHorizontal: 20 },
 
   header: {

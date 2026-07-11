@@ -5,7 +5,7 @@ import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchMeeting } from '@/api/meetings';
-import { DesertBackdrop } from '@/components/desert-backdrop';
+import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import type { Meeting } from '@/data/meetings';
 
@@ -50,8 +50,7 @@ export default function MeetingDetailScreen() {
 
   return (
     <View style={styles.root}>
-      <DesertBackdrop variant="band" height={200} />
-
+      <HomeBackdrop />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} hitSlop={10}>
@@ -131,8 +130,8 @@ export default function MeetingDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AppColors.screen },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: AppColors.screen },
+  root: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   band: { position: 'absolute', top: 0, left: 0, right: 0, height: 200 },
   safe: { flex: 1, paddingHorizontal: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, marginBottom: 6 },

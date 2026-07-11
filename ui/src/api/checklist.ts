@@ -1,60 +1,64 @@
 import { supabase } from '@/lib/supabase';
 
-// ─── Task definitions ─────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────
 export type TaskType = 'daily' | 'weekly' | 'onetime';
 
 export type Task = {
+  id: string;
   key: string;
   label: string;
-  sublabel?: string;
+  sublabel: string | null;
   type: TaskType;
+  sort: number;
 };
 
-export const DAILY_TASKS: Task[] = [
-  { key: 'no_gambling',     label: 'Stayed away from gambling',    sublabel: 'One day at a time',          type: 'daily' },
-  { key: 'called_member',   label: 'Called or texted a GA member', sublabel: 'Use the telephone list',     type: 'daily' },
-  { key: 'read_recovery',   label: 'Read recovery material',       sublabel: 'Daily reading or GA steps',  type: 'daily' },
-  { key: 'one_day_at_time', label: 'Lived one day at a time',      sublabel: 'Easy does it',               type: 'daily' },
-];
+export type TaskGroups = {
+  daily:   Task[];
+  weekly:  Task[];
+  onetime: Task[];
+};
 
-export const WEEKLY_TASKS: Task[] = [
-  { key: 'attended_meeting', label: 'Attended a GA meeting',      sublabel: 'Meetings make it',            type: 'weekly' },
-  { key: 'sponsor_contact',  label: 'Connected with my sponsor',  sublabel: 'Get a sponsor if you need one', type: 'weekly' },
-];
-
-export const ONETIME_TASKS: Task[] = [
-  { key: 'found_sponsor',    label: 'Found a sponsor',                         sublabel: 'Difficult to recover alone',        type: 'onetime' },
-  { key: 'scheduled_prg',   label: 'Scheduled a Pressure Relief Group',        sublabel: 'Financial & personal pressure relief', type: 'onetime' },
-  { key: 'joined_home_group', label: 'Joined a home group',                    sublabel: 'Get involved and be of service',    type: 'onetime' },
-  { key: 'completed_20q',   label: 'Completed the 20 Questions',               sublabel: 'Available in the Recovery tab',     type: 'onetime' },
-];
-
-const DAILY_KEYS  = new Set(DAILY_TASKS.map(t => t.key));
-const WEEKLY_KEYS = new Set(WEEKLY_TASKS.map(t => t.key));
-
-// ─── Date helpers ──────────────────────────────────────────────────
-export function toDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-// Returns the Monday of the given date's week (YYYY-MM-DD)
-export function getMondayStr(d: Date): string {
-  const day = d.getDay(); // 0 = Sun
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff);
-  return toDateStr(monday);
-}
-
-// ─── API ──────────────────────────────────────────────────────────
 export type CheckinState = {
   daily:   Set<string>;
   weekly:  Set<string>;
   onetime: Set<string>;
 };
 
-export async function fetchCheckins(userId: string): Promise<CheckinState> {
-  const today    = toDateStr(new Date());
-  const monday   = getMondayStr(new Date());
+// ─── Date helpers ─────────────────────────────────────────────────
+export function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function getMondayStr(d: Date): string {
+  const day  = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const mon  = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff);
+  return toDateStr(mon);
+}
+
+// ─── Fetch tasks from DB ──────────────────────────────────────────
+export async function fetchChecklistTasks(): Promise<TaskGroups> {
+  const { data } = await supabase
+    .from('checklist_tasks')
+    .select('id, key, label, sublabel, type, sort')
+    .eq('active', true)
+    .order('sort');
+
+  const tasks = (data ?? []) as Task[];
+  return {
+    daily:   tasks.filter(t => t.type === 'daily'),
+    weekly:  tasks.filter(t => t.type === 'weekly'),
+    onetime: tasks.filter(t => t.type === 'onetime'),
+  };
+}
+
+// ─── Fetch completion state ───────────────────────────────────────
+export async function fetchCheckins(userId: string, groups: TaskGroups): Promise<CheckinState> {
+  const today  = toDateStr(new Date());
+  const monday = getMondayStr(new Date());
+
+  const dailyKeys  = new Set(groups.daily.map(t => t.key));
+  const weeklyKeys = new Set(groups.weekly.map(t => t.key));
 
   const { data } = await supabase
     .from('daily_checkins')
@@ -66,19 +70,18 @@ export async function fetchCheckins(userId: string): Promise<CheckinState> {
   const onetime = new Set<string>();
 
   for (const row of data ?? []) {
-    if (DAILY_KEYS.has(row.task_key)  && row.completed_date === today)  daily.add(row.task_key);
-    if (WEEKLY_KEYS.has(row.task_key) && row.completed_date === monday)  weekly.add(row.task_key);
-    if (!DAILY_KEYS.has(row.task_key) && !WEEKLY_KEYS.has(row.task_key)) onetime.add(row.task_key);
+    if (dailyKeys.has(row.task_key)  && row.completed_date === today)  daily.add(row.task_key);
+    if (weeklyKeys.has(row.task_key) && row.completed_date === monday) weekly.add(row.task_key);
+    if (!dailyKeys.has(row.task_key) && !weeklyKeys.has(row.task_key)) onetime.add(row.task_key);
   }
 
   return { daily, weekly, onetime };
 }
 
+// ─── Toggle a task ────────────────────────────────────────────────
 export async function checkIn(userId: string, task: Task): Promise<void> {
   const date =
-    task.type === 'daily'  ? toDateStr(new Date()) :
-    task.type === 'weekly' ? getMondayStr(new Date()) :
-    toDateStr(new Date());
+    task.type === 'weekly' ? getMondayStr(new Date()) : toDateStr(new Date());
 
   await supabase
     .from('daily_checkins')
@@ -90,9 +93,9 @@ export async function checkIn(userId: string, task: Task): Promise<void> {
 
 export async function unCheckIn(userId: string, task: Task): Promise<void> {
   const date =
-    task.type === 'daily'  ? toDateStr(new Date()) :
     task.type === 'weekly' ? getMondayStr(new Date()) :
-    null;
+    task.type === 'daily'  ? toDateStr(new Date()) :
+    null; // onetime: delete any row for this key
 
   let q = supabase
     .from('daily_checkins')

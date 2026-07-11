@@ -11,6 +11,7 @@ import {
   createBlock, deleteBlock, fetchDayBlocks, todayDate, todayName,
   updateBlock, upsertLog, type BlockDraft, type BlockWithLog,
 } from '@/api/schedule';
+import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 
@@ -339,6 +340,7 @@ export default function ScheduleScreen() {
 
   return (
     <View style={s.root}>
+      <HomeBackdrop />
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
 
         {/* header */}
@@ -456,7 +458,7 @@ export default function ScheduleScreen() {
 
 // ── styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AppColors.screen },
+  root: { flex: 1 },
   safe: { flex: 1 },
 
   header: {

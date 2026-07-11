@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, Sc
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { addComment, fetchPostById, reportPost, type CommentRow, type PostDetail } from '@/api/posts';
-import { DesertBackdrop } from '@/components/desert-backdrop';
+import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 
@@ -111,8 +111,7 @@ export default function PostDetailScreen() {
 
   return (
     <View style={styles.root}>
-      <DesertBackdrop variant="band" height={180} />
-
+      <HomeBackdrop />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
@@ -212,8 +211,8 @@ export default function PostDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AppColors.screen },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: AppColors.screen },
+  root: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   safe: { flex: 1, paddingHorizontal: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, marginBottom: 8 },
   postHead: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },

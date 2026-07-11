@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchProfile, updateCleanDate, updateHandle, updatePersonalInfo, updateRecoveryPhrase } from '@/api/profile';
 import { useDrawer } from '@/context/drawer';
 import { DatePickerInput } from '@/components/date-picker-input';
-import { DesertBackdrop } from '@/components/desert-backdrop';
+import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 import { supabase } from '@/lib/supabase';
@@ -219,7 +219,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.root}>
-      <DesertBackdrop variant="band" height={180} />
+      <HomeBackdrop />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.headerRow}>
@@ -436,8 +436,8 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AppColors.screen },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: AppColors.screen },
+  root: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   safe: { flex: 1, paddingHorizontal: 20 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, marginBottom: 20 },
   screenTitle: { color: AppColors.text, fontSize: 24, fontWeight: '700' },

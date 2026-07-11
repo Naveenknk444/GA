@@ -12,11 +12,11 @@ import { useDrawer } from '@/context/drawer';
 import { supabase } from '@/lib/supabase';
 
 const NAV_ITEMS = [
-  { label: 'Home',     icon: 'home',          route: '/'         },
-  { label: 'Talk',     icon: 'chatbubbles',   route: '/talk'     },
-  { label: 'Meetings', icon: 'calendar',      route: '/meetings' },
-  { label: 'Recovery', icon: 'heart',         route: '/recovery' },
-  { label: 'Profile',  icon: 'person-circle', route: '/profile'  },
+  { label: 'Home',     icon: 'home',       route: '/'         },
+  { label: 'Talk',     icon: 'chatbubble', route: '/talk'     },
+  { label: 'Meetings', icon: 'calendar',   route: '/meetings' },
+  { label: 'Recovery', icon: 'leaf',       route: '/recovery' },
+  { label: 'Profile',  icon: 'person',     route: '/profile'  },
 ] as const;
 
 export function SideMenu() {
@@ -232,7 +232,7 @@ export function SideMenu() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AppColors.screen },
+  root: { flex: 1, backgroundColor: 'rgba(1,5,15,0.94)' },
   safe: { flex: 1, paddingTop: 4 },
 
   profileBlock: {

@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { createPost } from '@/api/posts';
-import { DesertBackdrop } from '@/components/desert-backdrop';
+import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 
@@ -105,8 +105,7 @@ export default function ComposeScreen() {
 
   return (
     <View style={styles.root}>
-      <DesertBackdrop variant="band" height={200} />
-
+      <HomeBackdrop />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         {/* header */}
         <View style={styles.header}>
@@ -229,7 +228,7 @@ export default function ComposeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AppColors.screen },
+  root: { flex: 1 },
   safe: { flex: 1, paddingHorizontal: 20 },
 
   header: {

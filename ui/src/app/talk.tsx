@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchPosts, reportPost, type PostSummary } from '@/api/posts';
-import { DesertBackdrop } from '@/components/desert-backdrop';
+import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 import { useDrawer } from '@/context/drawer';
@@ -77,8 +77,7 @@ export default function TalkScreen() {
 
   return (
     <View style={styles.root}>
-      <DesertBackdrop variant="band" height={220} />
-
+      <HomeBackdrop />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <Pressable onPress={open} hitSlop={10}>
@@ -182,7 +181,7 @@ export default function TalkScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AppColors.screen },
+  root: { flex: 1 },
   safe: { flex: 1, paddingHorizontal: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8 },
   title: { color: AppColors.text, fontSize: 26, fontWeight: '700', textAlign: 'center', marginTop: 6 },

@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useDrawer } from '@/context/drawer';
 import {
@@ -86,7 +87,9 @@ export default function TelephoneListScreen() {
     : members;
 
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+    <View style={{ flex: 1 }}>
+      <HomeBackdrop />
+      <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
 
       {/* Header */}
       <View style={s.header}>
@@ -140,11 +143,12 @@ export default function TelephoneListScreen() {
       )}
 
     </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: AppColors.screen },
+  safe: { flex: 1 },
 
   header: {
     flexDirection: 'row', alignItems: 'center',

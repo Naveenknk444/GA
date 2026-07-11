@@ -5,7 +5,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchMeetings } from '@/api/meetings';
-import { DesertBackdrop } from '@/components/desert-backdrop';
+import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
 import { useDrawer } from '@/context/drawer';
 import type { Meeting } from '@/data/meetings';
@@ -48,8 +48,7 @@ export default function MeetingsScreen() {
 
   return (
     <View style={styles.root}>
-      <DesertBackdrop variant="band" height={180} />
-
+      <HomeBackdrop />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.header}>
@@ -154,7 +153,7 @@ export default function MeetingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AppColors.screen },
+  root: { flex: 1 },
   band: { position: 'absolute', top: 0, left: 0, right: 0, height: 180 },
   safe: { flex: 1, paddingHorizontal: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10 },
