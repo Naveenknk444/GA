@@ -11,6 +11,7 @@ import { useAuth } from '@/context/auth';
 import { useDrawer } from '@/context/drawer';
 import { fetchDayBlocks, todayDate, todayName, type BlockWithLog } from '@/api/schedule';
 import { fetchCheckins, fetchChecklistTasks } from '@/api/checklist';
+import { fetchUserTasks, fetchUserTaskCheckins } from '@/api/user-tasks';
 import { fetchDailyReading, type ReadingContent } from '@/api/daily-reading';
 import { fetchProfile } from '@/api/profile';
 
@@ -49,10 +50,15 @@ export default function HomeScreen() {
 
     fetchDayBlocks(user.id, todayName(), todayDate()).then(setTodayBlocks);
 
-    fetchChecklistTasks().then(async g => {
-      setDailyTotal(g.daily.length);
-      const s = await fetchCheckins(user.id, g);
-      setDailyDone(g.daily.filter(t => s.daily.has(t.key)).length);
+    Promise.all([fetchChecklistTasks(), fetchUserTasks(user.id)]).then(async ([g, ug]) => {
+      const [sysCheckins, userCheckins] = await Promise.all([
+        fetchCheckins(user.id, g),
+        fetchUserTaskCheckins(user.id, ug.daily),
+      ]);
+      const sysDone  = g.daily.filter(t => sysCheckins.daily.has(t.key)).length;
+      const userDone = ug.daily.filter(t => userCheckins.has(t.id)).length;
+      setDailyTotal(g.daily.length + ug.daily.length);
+      setDailyDone(sysDone + userDone);
     });
 
     fetchDailyReading(m, d).then(r => { if (r) setReading(r.content); });
