@@ -21,7 +21,7 @@ const MEMBER_ID_RE = /^[a-zA-Z0-9_]{4,20}$/;
 
 export function LoginScreen() {
   const { signIn, signInWithMemberId, checkMemberIdAvailable } = useAuth();
-  const [mode, setMode] = useState<Mode>('new');
+  const [mode, setMode] = useState<Mode>('returning');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
