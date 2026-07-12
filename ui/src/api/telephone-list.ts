@@ -25,11 +25,18 @@ export function daysCleanFromBirthday(gabirthday: string | null): number | null 
 }
 
 export function formatCleanTime(days: number): string {
-  if (days < 30)  return `${days}d clean`;
-  if (days < 365) return `${Math.floor(days / 30)}mo clean`;
-  const yrs = Math.floor(days / 365);
-  const mos = Math.floor((days % 365) / 30);
-  return mos > 0 ? `${yrs}yr ${mos}mo clean` : `${yrs}yr clean`;
+  if (days < 30) return `${days} days`;
+  if (days < 365) {
+    const months  = Math.floor(days / 30);
+    const remDays = days - months * 30;
+    const label   = remDays > 0 ? `${months} mo ${remDays} days` : `${months} months`;
+    return `${label} (${days} d)`;
+  }
+  const years   = Math.floor(days / 365);
+  const remDays = days - years * 365;
+  const yearStr = years === 1 ? '1 year' : `${years} years`;
+  const label   = remDays > 0 ? `${yearStr} ${remDays} days` : yearStr;
+  return `${label} (${days} d)`;
 }
 
 export function phoneDigits(phone: string): string {
