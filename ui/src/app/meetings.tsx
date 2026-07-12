@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchMeetings } from '@/api/meetings';
@@ -24,7 +24,6 @@ export default function MeetingsScreen() {
   const today = DAYS[new Date().getDay()];
   const [dayFilter, setDayFilter] = useState(today);
   const [showDayPicker, setShowDayPicker] = useState(false);
-  const dayBtnRef = useRef<View>(null);
 
   useEffect(() => {
     fetchMeetings().then((r) => {
@@ -87,36 +86,84 @@ export default function MeetingsScreen() {
             );
           })}
 
-          {/* Day dropdown */}
-          <View>
-            <Pressable
-              ref={dayBtnRef}
-              onPress={() => setShowDayPicker(v => !v)}
-              style={[styles.chip, styles.dayChip, showDayPicker && styles.chipOn]}
-            >
-              <Ionicons name="calendar-outline" size={13} color={showDayPicker ? '#fff' : AppColors.textMuted} />
-              <Text style={[styles.chipText, showDayPicker && styles.chipTextOn]}>
-                {dayFilter === 'All Days' ? 'All Days' : dayFilter}
-              </Text>
-              <Ionicons name={showDayPicker ? 'chevron-up' : 'chevron-down'} size={12} color={showDayPicker ? '#fff' : AppColors.textMuted} />
-            </Pressable>
-
-            {showDayPicker && (
-              <View style={styles.dayDropdown}>
-                {DAY_OPTIONS.map(d => (
-                  <Pressable
-                    key={d}
-                    onPress={() => { setDayFilter(d); setShowDayPicker(false); }}
-                    style={[styles.dayOption, d === dayFilter && styles.dayOptionActive]}
-                  >
-                    <Text style={[styles.dayOptionText, d === dayFilter && styles.dayOptionTextActive]}>{d}</Text>
-                    {d === dayFilter && <Ionicons name="checkmark" size={14} color={AppColors.accent} />}
-                  </Pressable>
-                ))}
-              </View>
-            )}
-          </View>
+          <Pressable
+            onPress={() => setShowDayPicker(v => !v)}
+            style={[styles.chip, styles.dayChip, showDayPicker && styles.chipOn]}
+          >
+            <Ionicons name="calendar-outline" size={13} color={showDayPicker ? '#fff' : AppColors.textMuted} />
+            <Text style={[styles.chipText, showDayPicker && styles.chipTextOn]}>
+              {dayFilter === 'All Days' ? 'All Days' : dayFilter}
+            </Text>
+            <Ionicons
+              name={showDayPicker ? 'chevron-up' : 'chevron-down'}
+              size={12}
+              color={showDayPicker ? '#fff' : AppColors.textMuted}
+            />
+          </Pressable>
         </View>
+
+        {/* Day dropdown — Modal so it always renders above everything */}
+        <Modal
+          visible={showDayPicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDayPicker(false)}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setShowDayPicker(false)}>
+            <View style={styles.dropdownCard} onStartShouldSetResponder={() => true}>
+
+              {/* Header */}
+              <View style={styles.dropdownHeader}>
+                <Ionicons name="calendar-outline" size={18} color={AppColors.accent} />
+                <Text style={styles.dropdownHeading}>Select a day</Text>
+                <Pressable onPress={() => setShowDayPicker(false)} hitSlop={10}>
+                  <Ionicons name="close-circle" size={22} color={AppColors.textMuted} />
+                </Pressable>
+              </View>
+
+              {/* Options */}
+              <View style={styles.dropdownList}>
+                {DAY_OPTIONS.map((d, i) => {
+                  const active  = d === dayFilter;
+                  const isToday = d === today;
+                  const isLast  = i === DAY_OPTIONS.length - 1;
+                  return (
+                    <Pressable
+                      key={d}
+                      onPress={() => { setDayFilter(d); setShowDayPicker(false); }}
+                      style={({ pressed }) => [
+                        styles.dropdownOption,
+                        active && styles.dropdownOptionActive,
+                        pressed && { opacity: 0.7 },
+                        !isLast && styles.dropdownOptionBorder,
+                      ]}
+                    >
+                      {/* Left accent bar on active */}
+                      {active && <View style={styles.dropdownAccentBar} />}
+
+                      <View style={styles.dropdownOptionInner}>
+                        <Text style={[styles.dropdownOptionText, active && styles.dropdownOptionTextActive]}>
+                          {d}
+                        </Text>
+                        {isToday && (
+                          <View style={styles.todayBadge}>
+                            <Text style={styles.todayBadgeText}>Today</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {active
+                        ? <Ionicons name="checkmark-circle" size={20} color={AppColors.accent} />
+                        : <View style={styles.dropdownCircle} />
+                      }
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+            </View>
+          </Pressable>
+        </Modal>
 
         <View style={styles.metaRow}>
           <Text style={styles.metaText}>
@@ -217,30 +264,78 @@ const styles = StyleSheet.create({
   chipText: { color: AppColors.textMuted, fontSize: 13 },
   chipTextOn: { color: '#fff', fontWeight: '600' },
   dayChip: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  dayDropdown: {
-    position: 'absolute',
-    top: 38,
-    left: 0,
-    minWidth: 160,
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 28,
+  },
+  dropdownCard: {
+    width: '100%',
+    maxWidth: 340,
     backgroundColor: AppColors.screen,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: AppColors.tileBorder,
-    borderRadius: 14,
-    paddingVertical: 6,
-    zIndex: 100,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
   },
-  dayOption: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 14, paddingVertical: 10,
+  dropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.hairline,
+    backgroundColor: AppColors.tile,
   },
-  dayOptionActive: { backgroundColor: AppColors.accent + '18' },
-  dayOptionText: { color: AppColors.text, fontSize: 14 },
-  dayOptionTextActive: { color: AppColors.accent, fontWeight: '600' },
+  dropdownHeading: {
+    flex: 1,
+    color: AppColors.text,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  dropdownList: { paddingVertical: 6 },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    gap: 12,
+  },
+  dropdownOptionBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.hairline,
+  },
+  dropdownOptionActive: { backgroundColor: AppColors.accent + '14' },
+  dropdownAccentBar: {
+    position: 'absolute',
+    left: 0, top: 0, bottom: 0,
+    width: 3,
+    backgroundColor: AppColors.accent,
+    borderRadius: 2,
+  },
+  dropdownOptionInner: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dropdownOptionText: { color: AppColors.text, fontSize: 15 },
+  dropdownOptionTextActive: { color: AppColors.accent, fontWeight: '700' },
+  dropdownCircle: {
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 1.5, borderColor: AppColors.tileBorder,
+  },
+  todayBadge: {
+    backgroundColor: AppColors.accent + '22',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  todayBadgeText: { color: AppColors.accent, fontSize: 11, fontWeight: '600' },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, marginBottom: 10 },
   metaText: { color: AppColors.textMuted, fontSize: 13 },
   liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(63,207,142,0.14)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
