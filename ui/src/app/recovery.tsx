@@ -77,6 +77,7 @@ const CLEAN_DATE_MILESTONE_DAYS: Record<string, number> = {
   '2_months_clean':  60,
   '3_months_clean':  90,
   '6_months_clean':  180,
+  '9_months_clean':  270,
   '1_year_clean':    365,
   '18_months_clean': 540,
 };
