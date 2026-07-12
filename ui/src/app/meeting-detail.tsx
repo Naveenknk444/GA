@@ -1,22 +1,78 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchMeeting } from '@/api/meetings';
+import { createBlock } from '@/api/schedule';
 import { HomeBackdrop } from '@/components/home-backdrop';
 import { AppColors } from '@/constants/appTheme';
+import { useAuth } from '@/context/auth';
 import type { Meeting } from '@/data/meetings';
+
+function parseTo24h(timeStr: string): string {
+  const [time, period] = timeStr.trim().split(' ');
+  let [h, m] = time.split(':').map(Number);
+  if (period === 'PM' && h !== 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function addMinutes(hhmm: string, mins: number): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = h * 60 + m + mins;
+  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function nextOccurrenceOf(dayName: string): string {
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const target = DAYS.indexOf(dayName);
+  const today = new Date();
+  const diff = (target - today.getDay() + 7) % 7;
+  const result = new Date(today);
+  result.setDate(today.getDate() + diff);
+  return `${result.getFullYear()}-${String(result.getMonth() + 1).padStart(2, '0')}-${String(result.getDate()).padStart(2, '0')}`;
+}
 
 export default function MeetingDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
   const [meeting, setMeeting] = useState<Meeting | null | undefined>(undefined);
+  const [addState, setAddState] = useState<'idle' | 'choosing' | 'adding' | 'added'>('idle');
 
   useEffect(() => {
     if (id) fetchMeeting(id).then(setMeeting);
   }, [id]);
+
+  async function handleAddToCalendar(recurring: boolean) {
+    if (!meeting || !user) return;
+    setAddState('adding');
+    try {
+      const start = parseTo24h(meeting.time);
+      const end = meeting.endTime ? parseTo24h(meeting.endTime) : addMinutes(start, 90);
+      const location = meeting.online
+        ? 'Online'
+        : `${meeting.address}, ${meeting.city}, ${meeting.state}`.trim().replace(/,\s*$/, '');
+      await createBlock(user.id, {
+        day: meeting.day,
+        start_time: start,
+        end_time: end,
+        task: meeting.name,
+        color: meeting.color,
+        priority: 'medium',
+        location,
+        reminder_minutes: null,
+        energy_level: null,
+        recurring,
+        specific_date: recurring ? null : nextOccurrenceOf(meeting.day),
+      });
+      setAddState('added');
+    } catch {
+      setAddState('choosing');
+    }
+  }
 
   if (meeting === undefined) {
     return (
@@ -109,6 +165,40 @@ export default function MeetingDetailScreen() {
             </Pressable>
           )}
 
+          {/* Add to calendar */}
+          {addState === 'added' ? (
+            <View style={styles.addedRow}>
+              <Ionicons name="checkmark-circle" size={20} color={AppColors.meetings} />
+              <Text style={styles.addedText}>Added to your schedule</Text>
+            </View>
+          ) : addState === 'choosing' ? (
+            <View style={styles.choiceBox}>
+              <Text style={styles.choiceLabel}>Add this meeting to your schedule:</Text>
+              <View style={styles.choiceRow}>
+                <Pressable style={styles.choiceBtn} onPress={() => handleAddToCalendar(false)}>
+                  <Text style={styles.choiceBtnText}>This week only</Text>
+                </Pressable>
+                <Pressable style={[styles.choiceBtn, styles.choiceBtnPrimary]} onPress={() => handleAddToCalendar(true)}>
+                  <Text style={[styles.choiceBtnText, { color: '#fff' }]}>Every week</Text>
+                </Pressable>
+              </View>
+              <Pressable onPress={() => setAddState('idle')}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </Pressable>
+            </View>
+          ) : addState === 'adding' ? (
+            <View style={[styles.actionBtn, { borderColor: AppColors.meetings, justifyContent: 'center' }]}>
+              <ActivityIndicator size="small" color={AppColors.meetings} />
+            </View>
+          ) : (
+            <Pressable
+              style={[styles.actionBtn, { borderColor: AppColors.meetings }]}
+              onPress={() => setAddState('choosing')}>
+              <Ionicons name="calendar-outline" size={18} color={AppColors.meetings} />
+              <Text style={[styles.actionText, { color: AppColors.meetings }]}>Add to my calendar</Text>
+            </Pressable>
+          )}
+
           {/* about */}
           <View style={{ gap: 6 }}>
             <Text style={styles.aboutTitle}>About this meeting</Text>
@@ -177,4 +267,28 @@ const styles = StyleSheet.create({
   },
   noteTitle: { color: AppColors.text, fontSize: 14, fontWeight: '600' },
   noteText: { color: AppColors.textMuted, fontSize: 13, marginTop: 2 },
+
+  addedRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 13,
+    backgroundColor: AppColors.meetings + '18',
+    borderRadius: 12, borderWidth: 1, borderColor: AppColors.meetings + '44',
+  },
+  addedText: { color: AppColors.meetings, fontSize: 14, fontWeight: '600' },
+
+  choiceBox: {
+    backgroundColor: AppColors.tile, borderRadius: 14,
+    borderWidth: 1, borderColor: AppColors.tileBorder,
+    padding: 16, gap: 12,
+  },
+  choiceLabel: { color: AppColors.text, fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  choiceRow: { flexDirection: 'row', gap: 10 },
+  choiceBtn: {
+    flex: 1, paddingVertical: 11, borderRadius: 10,
+    borderWidth: 1, borderColor: AppColors.tileBorder,
+    alignItems: 'center',
+  },
+  choiceBtnPrimary: { backgroundColor: AppColors.meetings, borderColor: AppColors.meetings },
+  choiceBtnText: { color: AppColors.text, fontSize: 14, fontWeight: '600' },
+  cancelText: { color: AppColors.textMuted, fontSize: 13, textAlign: 'center' },
 });

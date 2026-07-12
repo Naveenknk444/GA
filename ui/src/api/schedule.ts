@@ -12,6 +12,8 @@ export type ScheduleBlock = {
   location: string | null;
   reminder_minutes: number | null;
   energy_level: 'low' | 'medium' | 'high' | null;
+  recurring: boolean;
+  specific_date: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -28,7 +30,10 @@ export type ScheduleLog = {
 
 export type BlockWithLog = ScheduleBlock & { log: ScheduleLog | null };
 
-export type BlockDraft = Omit<ScheduleBlock, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type BlockDraft = Omit<ScheduleBlock, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'recurring' | 'specific_date'> & {
+  recurring?: boolean;
+  specific_date?: string | null;
+};
 
 const DAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
@@ -42,14 +47,16 @@ export function todayDate(): string {
 
 // ── fetch all blocks for one day, joined with today's log ────────────────────
 export async function fetchDayBlocks(userId: string, day: string, date: string): Promise<BlockWithLog[]> {
-  const { data: blocks } = await supabase
-    .from('schedule_blocks')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('day', day)
-    .order('start_time', { ascending: true });
+  // Fetch recurring blocks for this day name + one-time blocks for this exact date
+  const [{ data: recurring }, { data: oneTime }] = await Promise.all([
+    supabase.from('schedule_blocks').select('*').eq('user_id', userId).eq('day', day).eq('recurring', true).order('start_time'),
+    supabase.from('schedule_blocks').select('*').eq('user_id', userId).eq('specific_date', date).eq('recurring', false).order('start_time'),
+  ]);
+  const blocks = [...(recurring ?? []), ...(oneTime ?? [])].sort((a, b) =>
+    a.start_time.localeCompare(b.start_time),
+  );
 
-  if (!blocks?.length) return [];
+  if (!blocks.length) return [];
 
   const { data: logs } = await supabase
     .from('schedule_logs')

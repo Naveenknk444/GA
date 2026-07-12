@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,17 +10,21 @@ import { AppColors } from '@/constants/appTheme';
 import { useDrawer } from '@/context/drawer';
 import type { Meeting } from '@/data/meetings';
 
-const CHIPS = ['All Meetings', 'Today', 'Online'] as const;
-
+const FORMAT_CHIPS = ['All Meetings', 'Online'] as const;
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAY_OPTIONS = ['All Days', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function MeetingsScreen() {
   const router = useRouter();
   const { open } = useDrawer();
-  const [chip, setChip] = useState<(typeof CHIPS)[number]>('All Meetings');
+  const [chip, setChip] = useState<(typeof FORMAT_CHIPS)[number]>('All Meetings');
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [source, setSource] = useState<'loading' | 'live' | 'sample'>('loading');
   const [query, setQuery] = useState('');
+  const today = DAYS[new Date().getDay()];
+  const [dayFilter, setDayFilter] = useState(today);
+  const [showDayPicker, setShowDayPicker] = useState(false);
+  const dayBtnRef = useRef<View>(null);
 
   useEffect(() => {
     fetchMeetings().then((r) => {
@@ -29,11 +33,9 @@ export default function MeetingsScreen() {
     });
   }, []);
 
-  const today = DAYS[new Date().getDay()];
-
   const filtered = meetings.filter((m) => {
-    if (chip === 'Today' && m.day !== today) return false;
     if (chip === 'Online' && !m.online) return false;
+    if (dayFilter !== 'All Days' && m.day !== dayFilter) return false;
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       return (
@@ -74,9 +76,9 @@ export default function MeetingsScreen() {
           <Ionicons name="options-outline" size={18} color={AppColors.textMuted} />
         </View>
 
-        {/* filter chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips} contentContainerStyle={{ gap: 8 }}>
-          {CHIPS.map((c) => {
+        {/* filter chips + day picker */}
+        <View style={styles.filtersRow}>
+          {FORMAT_CHIPS.map((c) => {
             const on = c === chip;
             return (
               <Pressable key={c} onPress={() => setChip(c)} style={[styles.chip, on && styles.chipOn]}>
@@ -84,7 +86,37 @@ export default function MeetingsScreen() {
               </Pressable>
             );
           })}
-        </ScrollView>
+
+          {/* Day dropdown */}
+          <View>
+            <Pressable
+              ref={dayBtnRef}
+              onPress={() => setShowDayPicker(v => !v)}
+              style={[styles.chip, styles.dayChip, showDayPicker && styles.chipOn]}
+            >
+              <Ionicons name="calendar-outline" size={13} color={showDayPicker ? '#fff' : AppColors.textMuted} />
+              <Text style={[styles.chipText, showDayPicker && styles.chipTextOn]}>
+                {dayFilter === 'All Days' ? 'All Days' : dayFilter}
+              </Text>
+              <Ionicons name={showDayPicker ? 'chevron-up' : 'chevron-down'} size={12} color={showDayPicker ? '#fff' : AppColors.textMuted} />
+            </Pressable>
+
+            {showDayPicker && (
+              <View style={styles.dayDropdown}>
+                {DAY_OPTIONS.map(d => (
+                  <Pressable
+                    key={d}
+                    onPress={() => { setDayFilter(d); setShowDayPicker(false); }}
+                    style={[styles.dayOption, d === dayFilter && styles.dayOptionActive]}
+                  >
+                    <Text style={[styles.dayOptionText, d === dayFilter && styles.dayOptionTextActive]}>{d}</Text>
+                    {d === dayFilter && <Ionicons name="checkmark" size={14} color={AppColors.accent} />}
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
 
         <View style={styles.metaRow}>
           <Text style={styles.metaText}>
@@ -172,7 +204,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   searchInput: { flex: 1, color: AppColors.text, fontSize: 14, outlineStyle: 'none' as any },
-  chips: { marginTop: 14, flexGrow: 0 },
+  filtersRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, flexWrap: 'wrap' },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -184,6 +216,31 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: AppColors.accent, borderColor: AppColors.accent },
   chipText: { color: AppColors.textMuted, fontSize: 13 },
   chipTextOn: { color: '#fff', fontWeight: '600' },
+  dayChip: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  dayDropdown: {
+    position: 'absolute',
+    top: 38,
+    left: 0,
+    minWidth: 160,
+    backgroundColor: AppColors.screen,
+    borderWidth: 1,
+    borderColor: AppColors.tileBorder,
+    borderRadius: 14,
+    paddingVertical: 6,
+    zIndex: 100,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  dayOption: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  dayOptionActive: { backgroundColor: AppColors.accent + '18' },
+  dayOptionText: { color: AppColors.text, fontSize: 14 },
+  dayOptionTextActive: { color: AppColors.accent, fontWeight: '600' },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, marginBottom: 10 },
   metaText: { color: AppColors.textMuted, fontSize: 13 },
   liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(63,207,142,0.14)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },

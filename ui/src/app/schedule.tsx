@@ -8,7 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  createBlock, deleteBlock, fetchDayBlocks, todayDate, todayName,
+  createBlock, deleteBlock, fetchDayBlocks,
   updateBlock, upsertLog, type BlockDraft, type BlockWithLog,
 } from '@/api/schedule';
 import { HomeBackdrop } from '@/components/home-backdrop';
@@ -16,9 +16,30 @@ import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-const DAY_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const PRIORITIES = ['low','medium','high'] as const;
 const ENERGIES   = ['low','medium','high'] as const;
+
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const JS_DAYS     = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+type WindowDay = { date: string; dayName: string; monthLabel: string; dayShort: string; isToday: boolean };
+
+function buildWindow(): WindowDay[] {
+  const today = new Date();
+  const result: WindowDay[] = [];
+  for (let offset = -1; offset <= 5; offset++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + offset);
+    result.push({
+      date:       `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+      dayName:    JS_DAYS[d.getDay()],
+      monthLabel: `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}`,
+      dayShort:   JS_DAYS[d.getDay()].slice(0, 3),
+      isToday:    offset === 0,
+    });
+  }
+  return result;
+}
 
 const TASK_COLORS: Record<string, string> = {
   Work:             '#4F8CFF',
@@ -297,8 +318,10 @@ export default function ScheduleScreen() {
   const { user }      = useAuth();
   const scrollRef     = useRef<ScrollView>(null);
 
-  const [activeDay,  setActiveDay]  = useState(todayName());
-  const [activeDate, setActiveDate] = useState(todayDate());
+  const [window]     = useState<WindowDay[]>(buildWindow);
+  const todayEntry    = window.find(w => w.isToday)!;
+  const [activeDate, setActiveDate] = useState(todayEntry.date);
+  const [activeDay,  setActiveDay]  = useState(todayEntry.dayName);
   const [blocks,     setBlocks]     = useState<BlockWithLog[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [selected,   setSelected]   = useState<BlockWithLog | null | 'new'>(null);
@@ -311,15 +334,9 @@ export default function ScheduleScreen() {
       .finally(() => setLoading(false));
   }, [user, activeDay, activeDate]);
 
-  function handleDayPress(day: string, idx: number) {
-    setActiveDay(day);
-    // compute the date for this day in the current week
-    const today = new Date();
-    const todayIdx = today.getDay() === 0 ? 6 : today.getDay() - 1;
-    const diff = idx - todayIdx;
-    const d = new Date(today);
-    d.setDate(d.getDate() + diff);
-    setActiveDate(d.toISOString().slice(0, 10));
+  function handleDayPress(entry: WindowDay) {
+    setActiveDay(entry.dayName);
+    setActiveDate(entry.date);
   }
 
   function handleSaved(b: BlockWithLog) {
@@ -335,8 +352,6 @@ export default function ScheduleScreen() {
     setBlocks(prev => prev.filter(b => b.id !== id));
     setSelected(null);
   }
-
-  const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
 
   return (
     <View style={s.root}>
@@ -354,17 +369,17 @@ export default function ScheduleScreen() {
           </Pressable>
         </View>
 
-        {/* day tabs */}
+        {/* day tabs — rolling 7-day window */}
         <ScrollView ref={scrollRef} horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.dayTabs} style={{ flexGrow: 0 }}>
-          {DAYS.map((day, idx) => {
-            const active  = day === activeDay;
-            const isToday = idx === todayIdx;
+          {window.map(entry => {
+            const active = entry.date === activeDate;
             return (
-              <Pressable key={day} onPress={() => handleDayPress(day, idx)}
+              <Pressable key={entry.date} onPress={() => handleDayPress(entry)}
                 style={[s.dayTab, active && s.dayTabActive]}>
-                <Text style={[s.dayShort, active && s.dayShortActive]}>{DAY_SHORT[idx]}</Text>
-                {isToday && <View style={[s.todayDot, active && { backgroundColor: '#fff' }]} />}
+                <Text style={[s.dayDate, active && s.dayDateActive]}>{entry.monthLabel}</Text>
+                <Text style={[s.dayShort, active && s.dayShortActive]}>({entry.dayShort})</Text>
+                {entry.isToday && <View style={[s.todayDot, active && { backgroundColor: '#fff' }]} />}
               </Pressable>
             );
           })}
@@ -469,14 +484,16 @@ const s = StyleSheet.create({
 
   dayTabs: { paddingHorizontal: 16, gap: 8, paddingBottom: 12 },
   dayTab: {
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderRadius: 12, alignItems: 'center', gap: 4,
+    paddingHorizontal: 12, paddingVertical: 10, minWidth: 68,
+    borderRadius: 12, alignItems: 'center', gap: 2,
     backgroundColor: AppColors.tile,
     borderWidth: 1, borderColor: AppColors.tileBorder,
   },
   dayTabActive: { backgroundColor: AppColors.accent, borderColor: AppColors.accent },
-  dayShort: { color: AppColors.textMuted, fontSize: 13, fontWeight: '600' },
-  dayShortActive: { color: '#fff' },
+  dayDate:       { color: AppColors.text, fontSize: 13, fontWeight: '700' },
+  dayDateActive: { color: '#fff' },
+  dayShort:       { color: AppColors.textMuted, fontSize: 11 },
+  dayShortActive: { color: 'rgba(255,255,255,0.8)' },
   todayDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: AppColors.accent },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },

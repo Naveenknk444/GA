@@ -60,6 +60,7 @@ export async function syncAutoAchievements(
     const days = Math.floor((Date.now() - cleanMs) / 86400000);
 
     if (days >= 1   && !earnedKeys.has('1_day_clean'))     toEarn.push({ key: '1_day_clean',     at: milestoneDate(profile.clean_date, 1)   });
+    if (days >= 3   && !earnedKeys.has('3_days_clean'))   toEarn.push({ key: '3_days_clean',   at: milestoneDate(profile.clean_date, 3)   });
     if (days >= 7   && !earnedKeys.has('1_week_clean'))    toEarn.push({ key: '1_week_clean',    at: milestoneDate(profile.clean_date, 7)   });
     if (days >= 30  && !earnedKeys.has('1_month_clean'))   toEarn.push({ key: '1_month_clean',   at: milestoneDate(profile.clean_date, 30)  });
     if (days >= 60  && !earnedKeys.has('2_months_clean'))  toEarn.push({ key: '2_months_clean',  at: milestoneDate(profile.clean_date, 60)  });
