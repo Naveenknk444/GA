@@ -10,6 +10,7 @@ import { useAuth } from '@/context/auth';
 import { useDrawer } from '@/context/drawer';
 import {
   checkIn, unCheckIn, fetchCheckins, fetchChecklistTasks,
+  fetchHiddenSystemTaskKeys, hideSystemTask, restoreSystemTask,
   getMondayStr, type Task, type TaskGroups, type CheckinState,
 } from '@/api/checklist';
 import {
@@ -50,7 +51,34 @@ function resetLabel(type: Tab): string {
 
 // ── Row components ─────────────────────────────────────────────────────────────
 
-function SystemTaskRow({ task, done, onToggle }: { task: Task; done: boolean; onToggle: () => void }) {
+function SystemTaskRow({
+  task, done, editMode, onToggle, onHide,
+}: {
+  task:     Task;
+  done:     boolean;
+  editMode: boolean;
+  onToggle: () => void;
+  onHide:   () => void;
+}) {
+  if (editMode) {
+    return (
+      <View style={s.editTaskRow}>
+        <Pressable onPress={onHide} hitSlop={10} style={s.deleteRowBtn}>
+          <Ionicons name="remove-circle" size={22} color="#EF4444" />
+        </Pressable>
+        <Pressable onPress={onToggle} style={[s.check, done && s.checkDone]}>
+          {done && <Ionicons name="checkmark" size={14} color="#fff" />}
+        </Pressable>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[s.taskLabel, done && s.taskLabelDone]} numberOfLines={1}>
+            {task.label}
+          </Text>
+          {task.sublabel && <Text style={s.taskSub}>{task.sublabel}</Text>}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <Pressable
       onPress={onToggle}
@@ -119,28 +147,31 @@ export default function ChecklistScreen() {
   const { user } = useAuth();
   const { open } = useDrawer();
 
-  const [tab,          setTab]          = useState<Tab>('daily');
-  const [groups,       setGroups]       = useState<TaskGroups>({ daily: [], weekly: [], onetime: [] });
-  const [state,        setState]        = useState<CheckinState>({ daily: new Set(), weekly: new Set(), onetime: new Set() });
-  const [userGroups,   setUserGroups]   = useState<UserTaskGroups>({ daily: [], weekly: [], onetime: [] });
-  const [userCheckins, setUserCheckins] = useState<Set<string>>(new Set());
-  const [deletedTasks, setDeletedTasks] = useState<UserTask[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [editMode,     setEditMode]     = useState(false);
-  const [showDeleted,  setShowDeleted]  = useState(false);
-  const [showModal,    setShowModal]    = useState(false);
-  const [editingTask,  setEditingTask]  = useState<UserTask | null>(null);
+  const [tab,             setTab]             = useState<Tab>('daily');
+  const [groups,          setGroups]          = useState<TaskGroups>({ daily: [], weekly: [], onetime: [] });
+  const [state,           setState]           = useState<CheckinState>({ daily: new Set(), weekly: new Set(), onetime: new Set() });
+  const [userGroups,      setUserGroups]      = useState<UserTaskGroups>({ daily: [], weekly: [], onetime: [] });
+  const [userCheckins,    setUserCheckins]    = useState<Set<string>>(new Set());
+  const [deletedTasks,    setDeletedTasks]    = useState<UserTask[]>([]);
+  const [hiddenSystemKeys, setHiddenSystemKeys] = useState<Set<string>>(new Set());
+  const [loading,         setLoading]         = useState(true);
+  const [editMode,        setEditMode]        = useState(false);
+  const [showDeleted,     setShowDeleted]     = useState(false);
+  const [showModal,       setShowModal]       = useState(false);
+  const [editingTask,     setEditingTask]     = useState<UserTask | null>(null);
 
   async function loadAll() {
     if (!user) return;
-    const [g, ug, del] = await Promise.all([
+    const [g, ug, del, hiddenKeys] = await Promise.all([
       fetchChecklistTasks(),
       fetchUserTasks(user.id),
       fetchDeletedUserTasks(user.id),
+      fetchHiddenSystemTaskKeys(user.id),
     ]);
     setGroups(g);
     setUserGroups(ug);
     setDeletedTasks(del);
+    setHiddenSystemKeys(hiddenKeys);
 
     const allUserTasks = [...ug.daily, ...ug.weekly, ...ug.onetime];
     const [sysCheckins, userCheckinSet] = await Promise.all([
@@ -175,6 +206,18 @@ export default function ChecklistScreen() {
     else      await checkInUserTask(user.id, task);
   }
 
+  async function handleHideSystemTask(taskKey: string) {
+    if (!user) return;
+    await hideSystemTask(user.id, taskKey);
+    loadAll();
+  }
+
+  async function handleRestoreSystemTask(taskKey: string) {
+    if (!user) return;
+    await restoreSystemTask(user.id, taskKey);
+    loadAll();
+  }
+
   async function handleQuickDelete(task: UserTask) {
     await deleteUserTask(task.id);
     loadAll();
@@ -185,28 +228,24 @@ export default function ChecklistScreen() {
     loadAll();
   }
 
-  function openCreate() {
-    setEditingTask(null);
-    setShowModal(true);
-  }
+  function openCreate() { setEditingTask(null); setShowModal(true); }
+  function openEdit(task: UserTask) { setEditingTask(task); setShowModal(true); }
 
-  function openEdit(task: UserTask) {
-    setEditingTask(task);
-    setShowModal(true);
-  }
-
-  // Current tab's tasks
-  const sysTasks  = groups[tab];
-  const userTasks = userGroups[tab];
-  const doneSet   = state[tab];
+  // ── Derived data for current tab ──
+  const allSysForTab  = groups[tab];
+  const sysTasks      = allSysForTab.filter(t => !hiddenSystemKeys.has(t.key));
+  const hiddenSys     = allSysForTab.filter(t => hiddenSystemKeys.has(t.key));
+  const userTasks     = userGroups[tab];
+  const doneSet       = state[tab];
 
   const totalCount = sysTasks.length + userTasks.length;
   const doneCount  =
     sysTasks.filter(t => doneSet.has(t.key)).length +
     userTasks.filter(t => userCheckins.has(t.id)).length;
 
-  const deletedForTab = deletedTasks.filter(t => t.type === tab);
-  const hasContent    = sysTasks.length > 0 || userTasks.length > 0;
+  const deletedForTab      = deletedTasks.filter(t => t.type === tab);
+  const hasRemovedContent  = deletedForTab.length > 0 || hiddenSys.length > 0;
+  const hasContent         = sysTasks.length > 0 || userTasks.length > 0;
 
   return (
     <View style={{ flex: 1 }}>
@@ -216,7 +255,7 @@ export default function ChecklistScreen() {
         {/* Header */}
         <View style={s.header}>
           <Pressable onPress={open} hitSlop={10}>
-            <Ionicons name="menu" size={26} color={AppColors.text} />
+            <Ionicons name="menu" size={22} color={AppColors.text} />
           </Pressable>
           <View style={{ flex: 1, marginLeft: 14 }}>
             <Text style={s.title}>Daily Checklist</Text>
@@ -228,7 +267,7 @@ export default function ChecklistScreen() {
             style={s.editBtn}
           >
             <Text style={s.editBtnText}>{editMode ? 'Done' : ''}</Text>
-            {!editMode && <Ionicons name="pencil" size={18} color={AppColors.accent} />}
+            {!editMode && <Ionicons name="pencil" size={17} color={AppColors.accent} />}
           </Pressable>
         </View>
 
@@ -261,7 +300,7 @@ export default function ChecklistScreen() {
               <Text style={s.periodText}>{dateLabel(tab)}</Text>
             </View>
 
-            {/* Progress bar (daily + weekly only) */}
+            {/* Progress bar */}
             {tab !== 'onetime' && totalCount > 0 && (
               <View style={s.progressCard}>
                 <View style={s.progressBar}>
@@ -271,95 +310,119 @@ export default function ChecklistScreen() {
               </View>
             )}
 
-            {/* Task card */}
             {hasContent || editMode ? (
               <View style={s.card}>
 
-                {/* System tasks */}
-                {sysTasks.map((task, i) => (
-                  <View key={task.key}>
-                    {i > 0 && <View style={s.divider} />}
-                    <SystemTaskRow
-                      task={task}
-                      done={doneSet.has(task.key)}
-                      onToggle={() => toggleSystem(task)}
-                    />
-                  </View>
-                ))}
-
-                {/* My Tasks section header */}
+                {/* ── MY TASKS (top) ── */}
                 {(userTasks.length > 0 || editMode) && (
                   <>
-                    {sysTasks.length > 0 && <View style={s.divider} />}
                     <View style={s.sectionHeader}>
                       <Text style={s.sectionHeaderText}>My Tasks</Text>
                     </View>
+
+                    {userTasks.map((task, i) => (
+                      <View key={task.id}>
+                        {i > 0 && <View style={s.divider} />}
+                        <UserTaskRow
+                          task={task}
+                          done={userCheckins.has(task.id)}
+                          editMode={editMode}
+                          onToggle={() => toggleUser(task)}
+                          onEdit={() => openEdit(task)}
+                          onDelete={() => handleQuickDelete(task)}
+                        />
+                      </View>
+                    ))}
+
+                    {/* Add task button */}
+                    {editMode && (
+                      <>
+                        {userTasks.length > 0 && <View style={s.divider} />}
+                        <Pressable
+                          onPress={openCreate}
+                          style={({ pressed }) => [s.addTaskRow, pressed && { opacity: 0.7 }]}
+                        >
+                          <Ionicons name="add-circle-outline" size={20} color={AppColors.meetings} />
+                          <Text style={s.addTaskText}>Add a task</Text>
+                        </Pressable>
+                      </>
+                    )}
                   </>
                 )}
 
-                {/* User tasks */}
-                {userTasks.map(task => (
-                  <View key={task.id}>
-                    <View style={s.divider} />
-                    <UserTaskRow
-                      task={task}
-                      done={userCheckins.has(task.id)}
-                      editMode={editMode}
-                      onToggle={() => toggleUser(task)}
-                      onEdit={() => openEdit(task)}
-                      onDelete={() => handleQuickDelete(task)}
-                    />
-                  </View>
-                ))}
-
-                {/* Add task button (edit mode only) */}
-                {editMode && (
+                {/* ── GA PROGRAM DEFAULTS (bottom) ── */}
+                {sysTasks.length > 0 && (
                   <>
-                    <View style={s.divider} />
-                    <Pressable
-                      onPress={openCreate}
-                      style={({ pressed }) => [s.addTaskRow, pressed && { opacity: 0.7 }]}
-                    >
-                      <Ionicons name="add-circle-outline" size={20} color={AppColors.meetings} />
-                      <Text style={s.addTaskText}>Add a task</Text>
-                    </Pressable>
+                    {(userTasks.length > 0 || editMode) && <View style={s.divider} />}
+                    <View style={s.gaHeader}>
+                      <Ionicons name="book-outline" size={11} color={AppColors.recovery} />
+                      <Text style={[s.sectionHeaderText, { color: AppColors.recovery }]}>GA Program</Text>
+                    </View>
+
+                    {sysTasks.map((task, i) => (
+                      <View key={task.key}>
+                        {i > 0 && <View style={s.divider} />}
+                        <SystemTaskRow
+                          task={task}
+                          done={doneSet.has(task.key)}
+                          editMode={editMode}
+                          onToggle={() => toggleSystem(task)}
+                          onHide={() => handleHideSystemTask(task.key)}
+                        />
+                      </View>
+                    ))}
                   </>
                 )}
+
               </View>
             ) : (
               <View style={s.empty}>
-                <Ionicons name="cloud-offline-outline" size={36} color={AppColors.textMuted} />
-                <Text style={s.emptyText}>No tasks found.</Text>
-                <Text style={s.emptySub}>Run the checklist-tasks seed in Supabase.</Text>
+                <Ionicons name="checkmark-circle-outline" size={36} color={AppColors.textMuted} />
+                <Text style={s.emptyText}>No tasks for this period.</Text>
+                <Text style={s.emptySub}>Tap the pencil to add your own tasks.</Text>
               </View>
             )}
 
-            {/* Deleted tasks (edit mode only) */}
-            {editMode && deletedForTab.length > 0 && (
+            {/* Removed / Hidden tasks (edit mode only) */}
+            {editMode && hasRemovedContent && (
               <View style={s.deletedCard}>
                 <Pressable
                   onPress={() => setShowDeleted(o => !o)}
                   style={s.deletedHeader}
                 >
-                  <Ionicons
-                    name="trash-outline"
-                    size={14}
-                    color={AppColors.textMuted}
-                  />
+                  <Ionicons name="trash-outline" size={14} color={AppColors.textMuted} />
                   <Text style={s.deletedHeaderText}>
-                    Deleted Tasks ({deletedForTab.length})
+                    Removed Tasks ({deletedForTab.length + hiddenSys.length})
                   </Text>
                   <Ionicons
                     name={showDeleted ? 'chevron-up' : 'chevron-down'}
-                    size={14}
-                    color={AppColors.textMuted}
+                    size={14} color={AppColors.textMuted}
                   />
                 </Pressable>
+
                 {showDeleted && (
                   <View>
+                    {/* Hidden GA system tasks */}
+                    {hiddenSys.map((task, i) => (
+                      <View key={task.key}>
+                        {i > 0 && <View style={s.divider} />}
+                        <View style={s.deletedRow}>
+                          <Ionicons name="book-outline" size={12} color={AppColors.textMuted} style={{ marginTop: 1 }} />
+                          <Text style={s.deletedLabel} numberOfLines={1}>{task.label}</Text>
+                          <Pressable
+                            onPress={() => handleRestoreSystemTask(task.key)}
+                            style={s.restoreBtn}
+                          >
+                            <Text style={s.restoreBtnText}>Restore</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    ))}
+
+                    {/* Deleted user tasks */}
                     {deletedForTab.map((task, i) => (
                       <View key={task.id}>
-                        {i > 0 && <View style={s.divider} />}
+                        {(i > 0 || hiddenSys.length > 0) && <View style={s.divider} />}
                         <View style={s.deletedRow}>
                           <Text style={s.deletedLabel} numberOfLines={1}>{task.label}</Text>
                           <Pressable
@@ -450,8 +513,12 @@ const s = StyleSheet.create({
     color: AppColors.accent, fontSize: 10, fontWeight: '700',
     textTransform: 'uppercase', letterSpacing: 1.2,
   },
+  gaHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: 'rgba(139,92,246,0.06)',
+  },
 
-  // System task row
   taskRow: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
   check: {
     width: 24, height: 24, borderRadius: 12,
@@ -465,7 +532,6 @@ const s = StyleSheet.create({
   taskSub:       { color: AppColors.textMuted, fontSize: 12 },
   highIcon:      { fontSize: 12 },
 
-  // Edit-mode user task row
   editTaskRow: {
     flexDirection: 'row', alignItems: 'center',
     gap: 10, paddingVertical: 12, paddingHorizontal: 12,
@@ -473,30 +539,26 @@ const s = StyleSheet.create({
   deleteRowBtn: { padding: 2 },
   editRowBtn:   { padding: 4 },
 
-  // Add task button
   addTaskRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16,
   },
   addTaskText: { color: AppColors.meetings, fontSize: 15, fontWeight: '500' },
 
-  // Deleted tasks
   deletedCard: {
     backgroundColor: AppColors.tile,
     borderWidth: 1, borderColor: AppColors.tileBorder,
     borderRadius: 16, overflow: 'hidden',
   },
   deletedHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14,
   },
   deletedHeaderText: { flex: 1, color: AppColors.textMuted, fontSize: 13, fontWeight: '600' },
   deletedRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingVertical: 12, gap: 12,
+    paddingHorizontal: 14, paddingVertical: 12, gap: 8,
   },
   deletedLabel: { flex: 1, color: AppColors.textMuted, fontSize: 14 },
-  restoreBtn:   {
+  restoreBtn: {
     backgroundColor: AppColors.accent + '20',
     borderWidth: 1, borderColor: AppColors.accent + '40',
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,

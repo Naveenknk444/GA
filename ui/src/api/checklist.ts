@@ -78,6 +78,30 @@ export async function fetchCheckins(userId: string, groups: TaskGroups): Promise
   return { daily, weekly, onetime };
 }
 
+// ─── Hidden system tasks ──────────────────────────────────────────
+
+export async function fetchHiddenSystemTaskKeys(userId: string): Promise<Set<string>> {
+  const { data } = await supabase
+    .from('checklist_hidden_system_tasks')
+    .select('task_key')
+    .eq('user_id', userId);
+  return new Set((data ?? []).map((r: any) => r.task_key));
+}
+
+export async function hideSystemTask(userId: string, taskKey: string): Promise<void> {
+  await supabase
+    .from('checklist_hidden_system_tasks')
+    .upsert({ user_id: userId, task_key: taskKey }, { onConflict: 'user_id,task_key' });
+}
+
+export async function restoreSystemTask(userId: string, taskKey: string): Promise<void> {
+  await supabase
+    .from('checklist_hidden_system_tasks')
+    .delete()
+    .eq('user_id', userId)
+    .eq('task_key', taskKey);
+}
+
 // ─── Toggle a task ────────────────────────────────────────────────
 export async function checkIn(userId: string, task: Task): Promise<void> {
   const date =
