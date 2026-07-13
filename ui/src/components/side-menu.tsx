@@ -116,6 +116,25 @@ export function SideMenu() {
 
         <View style={s.divider} />
         <Pressable
+          onPress={() => navigate('/twelve-step')}
+          style={({ pressed }) => [
+            s.navItem,
+            isActive('/twelve-step') && s.navItemActive,
+            pressed && { opacity: 0.7 },
+          ]}>
+          {isActive('/twelve-step') && <View style={s.activeBorder} />}
+          <Ionicons
+            name={isActive('/twelve-step') ? 'book' : 'book-outline'}
+            size={20}
+            color={isActive('/twelve-step') ? AppColors.recovery : AppColors.text}
+          />
+          <Text style={[s.navLabel, isActive('/twelve-step') && { color: AppColors.recovery, fontWeight: '700' }]}>
+            12 Step Program
+          </Text>
+        </Pressable>
+
+        <View style={s.divider} />
+        <Pressable
           onPress={() => navigate('/pressure-relief')}
           style={({ pressed }) => [
             s.navItem,

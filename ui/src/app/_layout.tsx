@@ -138,6 +138,7 @@ function AppGate() {
       <Tabs.Screen name="daily-reading" options={{ href: null }} />
       <Tabs.Screen name="telephone-list" options={{ href: null }} />
       <Tabs.Screen name="checklist" options={{ href: null }} />
+      <Tabs.Screen name="twelve-step" options={{ href: null }} />
       <Tabs.Screen name="db-schema" options={{ href: null }} />
     </Tabs>
 

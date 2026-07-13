@@ -68,7 +68,10 @@ export async function syncAutoAchievements(
     if (days >= 180 && !earnedKeys.has('6_months_clean'))  toEarn.push({ key: '6_months_clean',  at: milestoneDate(profile.clean_date, 180) });
     if (days >= 270 && !earnedKeys.has('9_months_clean'))  toEarn.push({ key: '9_months_clean',  at: milestoneDate(profile.clean_date, 270) });
     if (days >= 365 && !earnedKeys.has('1_year_clean'))    toEarn.push({ key: '1_year_clean',    at: milestoneDate(profile.clean_date, 365) });
-    if (days >= 540 && !earnedKeys.has('18_months_clean')) toEarn.push({ key: '18_months_clean', at: milestoneDate(profile.clean_date, 540) });
+    if (days >= 540  && !earnedKeys.has('18_months_clean')) toEarn.push({ key: '18_months_clean', at: milestoneDate(profile.clean_date, 540)  });
+    if (days >= 730  && !earnedKeys.has('2_years_clean'))   toEarn.push({ key: '2_years_clean',   at: milestoneDate(profile.clean_date, 730)  });
+    if (days >= 1095 && !earnedKeys.has('3_years_clean'))   toEarn.push({ key: '3_years_clean',   at: milestoneDate(profile.clean_date, 1095) });
+    if (days >= 1825 && !earnedKeys.has('5_years_clean'))   toEarn.push({ key: '5_years_clean',   at: milestoneDate(profile.clean_date, 1825) });
   }
 
   if (profile.first_name && profile.clean_date && !earnedKeys.has('profile_set_up'))

@@ -15,6 +15,9 @@ VALUES
   ('9_months_clean',   '9 Months Clean',    'Nine months of sustained recovery.',              'milestone', 'automatic', 'trophy-outline', '#34D399', 55),
   ('1_year_clean',     '1 Year Clean',      'One full year of recovery.',                      'milestone', 'automatic', 'trophy',         '#EF4444', 60),
   ('18_months_clean',  '18 Months Clean',   'A year and a half of recovery.',                  'milestone', 'automatic', 'trophy-outline', '#A78BFA', 75),
+  ('2_years_clean',    '2 Years Clean',     'Two full years of recovery. Incredible.',          'milestone', 'automatic', 'trophy',         '#F59E0B', 80),
+  ('3_years_clean',    '3 Years Clean',     'Three years of freedom. You are an inspiration.',  'milestone', 'automatic', 'trophy',         '#EF4444', 85),
+  ('5_years_clean',    '5 Years Clean',     'Five years clean. A true champion of recovery.',   'milestone', 'automatic', 'trophy',         '#A78BFA', 90),
 
   -- Activity badges
   ('profile_set_up',          'Profile Set Up',        'You set your name and recovery date.',        'activity', 'automatic',    'person-circle-outline',    '#60A5FA', 100),

@@ -18,7 +18,7 @@ import { fetchProfile } from '@/api/profile';
 const TILES = [
   { key: 'talk',     label: 'Talk',     icon: 'chatbubbles', color: AppColors.talk,     route: '/talk' },
   { key: 'meetings', label: 'Meetings', icon: 'calendar',    color: AppColors.meetings, route: '/meetings' },
-  { key: 'recovery', label: 'Recovery', icon: 'leaf',        color: AppColors.recovery, route: '/recovery' },
+  { key: 'twelve-step', label: '12 Step', icon: 'book',     color: AppColors.recovery, route: '/twelve-step' },
   { key: 'share',    label: 'Share',    icon: 'paper-plane', color: AppColors.share,    route: '/compose' },
 ] as const;
 

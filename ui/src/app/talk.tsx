@@ -10,13 +10,18 @@ import { AppColors } from '@/constants/appTheme';
 import { useAuth } from '@/context/auth';
 import { useDrawer } from '@/context/drawer';
 
-const FILTERS = ['All', 'Discussion', 'Support', 'Milestones'] as const;
-type Filter = (typeof FILTERS)[number];
+const FILTERS = [
+  { label: 'All',        icon: 'grid-outline'        },
+  { label: 'Discussion', icon: 'chatbubbles-outline'  },
+  { label: 'Support',    icon: 'heart-outline'        },
+  { label: 'Milestones', icon: 'trophy-outline'       },
+] as const;
+type Filter = (typeof FILTERS)[number]['label'];
 
 const CATEGORY_META = {
-  discussion: { label: 'Discussion', color: AppColors.talk },
-  support:    { label: 'Support',    color: '#34D399'      },
-  milestone:  { label: 'Milestone',  color: AppColors.share },
+  discussion: { label: 'Discussion', color: AppColors.talk    },
+  support:    { label: 'Support',    color: '#34D399'         },
+  milestone:  { label: 'Milestone',  color: AppColors.share   },
 };
 
 function timeAgo(dateStr: string): string {
@@ -40,26 +45,25 @@ function PostCard({
   onPress:  () => void;
   onReport: () => void;
 }) {
-  const meta        = CATEGORY_META[post.category];
-  const replyCount  = post.comments.length;
+  const meta       = CATEGORY_META[post.category];
+  const replyCount = post.comments.length;
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [s.card, pressed && { opacity: 0.75 }]}
     >
-      {/* Left accent stripe */}
       <View style={[s.stripe, { backgroundColor: meta.color }]} />
 
       <View style={s.cardInner}>
-        {/* Top row: badge + time + menu */}
+        {/* Top row */}
         <View style={s.cardTop}>
           <View style={[s.badge, { backgroundColor: meta.color + '22' }]}>
             <Text style={[s.badgeText, { color: meta.color }]}>{meta.label}</Text>
           </View>
           <Text style={s.cardTime}>{timeAgo(post.created_at)}</Text>
           <Pressable onPress={onReport} hitSlop={10}>
-            <Ionicons name="ellipsis-horizontal" size={16} color={AppColors.textMuted} />
+            <Ionicons name="ellipsis-horizontal" size={14} color={AppColors.textMuted} />
           </Pressable>
         </View>
 
@@ -69,16 +73,16 @@ function PostCard({
         {/* Body preview */}
         <Text style={s.cardBody} numberOfLines={2}>{post.body}</Text>
 
-        {/* Footer: author + replies */}
+        {/* Footer */}
         <View style={s.cardFooter}>
           <View style={s.authorRow}>
             <View style={[s.authorAvatar, { backgroundColor: meta.color + '20' }]}>
-              <Ionicons name="person" size={10} color={meta.color} />
+              <Ionicons name="person" size={9} color={meta.color} />
             </View>
             <Text style={s.authorName}>{post.profiles?.handle ?? 'Member'}</Text>
           </View>
           <View style={s.replyRow}>
-            <Ionicons name="chatbubble-outline" size={12} color={AppColors.textMuted} />
+            <Ionicons name="chatbubble-outline" size={11} color={AppColors.textMuted} />
             <Text style={s.replyCount}>{replyCount}</Text>
           </View>
         </View>
@@ -88,9 +92,9 @@ function PostCard({
 }
 
 export default function TalkScreen() {
-  const router    = useRouter();
-  const { open }  = useDrawer();
-  const { user }  = useAuth();
+  const router   = useRouter();
+  const { open } = useDrawer();
+  const { user } = useAuth();
 
   const [active,  setActive]  = useState<Filter>('All');
   const [posts,   setPosts]   = useState<PostSummary[]>([]);
@@ -129,7 +133,7 @@ export default function TalkScreen() {
         {/* Header */}
         <View style={s.header}>
           <Pressable onPress={open} hitSlop={10}>
-            <Ionicons name="menu" size={26} color={AppColors.text} />
+            <Ionicons name="menu" size={22} color={AppColors.text} />
           </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={s.title}>Talk</Text>
@@ -140,29 +144,30 @@ export default function TalkScreen() {
             hitSlop={8}
             style={s.composeBtn}
           >
-            <Ionicons name="create-outline" size={20} color={AppColors.accent} />
+            <Ionicons name="create-outline" size={17} color={AppColors.accent} />
           </Pressable>
         </View>
 
         {/* Filter chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.filters}
-        >
+        <View style={s.filters}>
           {FILTERS.map(f => {
-            const isActive = f === active;
+            const isActive = f.label === active;
             return (
               <Pressable
-                key={f}
-                onPress={() => setActive(f)}
+                key={f.label}
+                onPress={() => setActive(f.label)}
                 style={[s.chip, isActive && s.chipActive]}
               >
-                <Text style={[s.chipText, isActive && s.chipTextActive]}>{f}</Text>
+                <Ionicons
+                  name={f.icon as any}
+                  size={13}
+                  color={isActive ? '#fff' : AppColors.textMuted}
+                />
+                <Text style={[s.chipText, isActive && s.chipTextActive]}>{f.label}</Text>
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
 
         {/* Post list */}
         {loading ? (
@@ -171,7 +176,7 @@ export default function TalkScreen() {
           </View>
         ) : filtered.length === 0 ? (
           <View style={s.center}>
-            <Ionicons name="chatbubbles-outline" size={40} color={AppColors.textMuted} />
+            <Ionicons name="chatbubbles-outline" size={34} color={AppColors.textMuted} />
             <Text style={s.emptyText}>
               {posts.length === 0 ? 'No posts yet' : `No ${active === 'All' ? '' : active.toLowerCase() + ' '}posts`}
             </Text>
@@ -216,19 +221,23 @@ const s = StyleSheet.create({
   title:    { color: AppColors.text, fontSize: 22, fontWeight: '700' },
   subtitle: { color: AppColors.textMuted, fontSize: 12, marginTop: 1 },
   composeBtn: {
-    width: 38, height: 38, borderRadius: 12,
+    width: 34, height: 34, borderRadius: 10,
     backgroundColor: AppColors.accent + '18',
     alignItems: 'center', justifyContent: 'center',
   },
 
   filters: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
     paddingHorizontal: 20,
     paddingBottom: 14,
   },
   chip: {
-    paddingHorizontal: 16, paddingVertical: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14, paddingVertical: 7,
     borderRadius: 20,
     backgroundColor: AppColors.tile,
     borderWidth: 1, borderColor: AppColors.tileBorder,
@@ -240,7 +249,7 @@ const s = StyleSheet.create({
   chipText:       { color: AppColors.textMuted, fontSize: 13, fontWeight: '500' },
   chipTextActive: { color: '#fff', fontWeight: '700' },
 
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  center:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   emptyText: { color: AppColors.text, fontSize: 15, fontWeight: '600' },
   emptyHint: { color: AppColors.textMuted, fontSize: 13 },
 
@@ -273,7 +282,7 @@ const s = StyleSheet.create({
   },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   authorAvatar: {
-    width: 20, height: 20, borderRadius: 10,
+    width: 18, height: 18, borderRadius: 9,
     alignItems: 'center', justifyContent: 'center',
   },
   authorName:  { color: AppColors.textMuted, fontSize: 12, fontWeight: '500' },
